@@ -1,0 +1,15 @@
+.DS_Store
+node_modules/
+.vite/
+
+# renders, previews, contact sheets
+out/
+
+# captured footage: regenerable with `bun capture/<name>.ts`, large, and full of whatever the
+# filmed app showed. Only footage/*/manifest.json is committed.
+footage/**/*.png
+footage/**/*.jpg
+
+# secrets and saved sign-in sessions for capture scripts
+.env*
+*.storage.json

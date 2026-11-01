@@ -1,0 +1,20 @@
+{
+  "name": "demo-reel",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@fontsource/instrument-serif": "^5.3.0",
+    "@fontsource/inter": "^5.3.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "kokoro-js": "^1.2.1",
+    "playwright-core": "^1.63.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1"
+  }
+}

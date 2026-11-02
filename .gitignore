@@ -5,10 +5,10 @@ node_modules/
 # renders, previews, contact sheets
 out/
 
-# captured footage: regenerable with `bun capture/<name>.ts`, large, and full of whatever the
-# filmed app showed. Only footage/*/manifest.json is committed.
-footage/**/*.png
-footage/**/*.jpg
+# captured footage: regenerable with `bun projects/<name>/capture.ts`, large, and full of whatever
+# the filmed app showed. Only projects/*/footage/manifest.json is committed.
+projects/*/footage/**/*.png
+projects/*/footage/**/*.jpg
 
 # secrets and saved sign-in sessions for capture scripts
 .env*

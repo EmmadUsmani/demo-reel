@@ -1,13 +1,13 @@
 // OpenStreetMap: search for a city, watch the map fly to it and pin it, then zoom in a level at a
 // time down to the streets. One recorded session, held at each result for its line. Nothing is
 // sped up; the map tiles are OpenStreetMap's own.
-import type { ClipPlayer } from '../engine/clip';
-import { ClipScene, type CameraKey } from '../engine/clip-scene';
-import { beat, grow, union } from '../engine/beats';
-import { highlight, label } from '../engine/draw';
-import type { Cue, Frame, Line } from '../engine/scene';
-import { ease } from '../engine/util';
-import { insideWindow } from '../engine/view';
+import type { ClipPlayer } from '@engine/clip';
+import { ClipScene, type CameraKey } from '@engine/clip-scene';
+import { beat, grow, union } from '@engine/beats';
+import { highlight, label } from '@engine/draw';
+import type { Cue, Frame, Line } from '@engine/scene';
+import { ease } from '@engine/util';
+import { insideWindow } from '@engine/view';
 
 const INTRO = 1.0; // wide on the map before the search
 const FOUND_HOLD = 3.4; // on the pinned result

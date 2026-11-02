@@ -7,8 +7,8 @@
 // tiles come from OpenStreetMap's own tile servers, so a network connection is needed. The map's
 // fly-to and zoom animations play on the virtual clock, and `settle` waits for tiles in view.
 import type { Page } from 'playwright-core';
-import { baseUrl, Footage, launch, settle } from './lib';
-import { Recorder } from './record';
+import { baseUrl, Footage, launch, settle } from '../../capture/lib';
+import { Recorder } from '../../capture/record';
 
 const URL = baseUrl('https://www.openstreetmap.org');
 const QUERY = 'Berkeley, California';

@@ -1,13 +1,13 @@
 // Hoppscotch: a request to its public echo endpoint. One query parameter is typed in and sent, the
 // response is read, then a second parameter is added and sent again. One recorded session, held at
 // each result for its line. Nothing is sped up.
-import type { ClipPlayer } from '../engine/clip';
-import { ClipScene, type CameraKey } from '../engine/clip-scene';
-import { beat, grow, union } from '../engine/beats';
-import { highlight, label } from '../engine/draw';
-import type { Cue, Frame, Line } from '../engine/scene';
-import { ease } from '../engine/util';
-import { insideWindow } from '../engine/view';
+import type { ClipPlayer } from '@engine/clip';
+import { ClipScene, type CameraKey } from '@engine/clip-scene';
+import { beat, grow, union } from '@engine/beats';
+import { highlight, label } from '@engine/draw';
+import type { Cue, Frame, Line } from '@engine/scene';
+import { ease } from '@engine/util';
+import { insideWindow } from '@engine/view';
 
 const INTRO = 4.2; // wide on the request, with its line
 const SENT_A = 3.0; // on the status

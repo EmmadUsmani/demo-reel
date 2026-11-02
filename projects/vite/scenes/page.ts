@@ -1,12 +1,12 @@
 // Vite's homepage from one full-page plate: a push into the hero's install command, then back out
 // and a scroll down to the features. The page isn't sticky anywhere, so scrolling the plate is
 // exactly how the real page scrolls.
-import { loadFootage, type Shot } from '../engine/assets';
-import { beat, grow, union } from '../engine/beats';
-import { backdrop, highlight, label } from '../engine/draw';
-import { Scene, type Cue, type Frame, type Line } from '../engine/scene';
-import { ease, keys } from '../engine/util';
-import { AppView, cameraAt, cameraCues, insideWindow, type Camera } from '../engine/view';
+import { loadFootage, type Shot } from '@engine/assets';
+import { beat, grow, union } from '@engine/beats';
+import { backdrop, highlight, label } from '@engine/draw';
+import { Scene, type Cue, type Frame, type Line } from '@engine/scene';
+import { ease, keys } from '@engine/util';
+import { AppView, cameraAt, cameraCues, insideWindow, type Camera } from '@engine/view';
 
 const DUR = 10.0;
 const PUSH = [0.5, 1.6] as const; // wide → the hero

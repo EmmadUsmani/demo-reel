@@ -4,7 +4,7 @@
 //   bun capture/vite.ts               (BASE_URL films another build of the site)
 // The hero's illustration animates; the plates freeze it at whatever frame the shot lands on.
 import type { Page } from 'playwright-core';
-import { baseUrl, Footage, launch, loadWholePage, settle } from './lib';
+import { baseUrl, Footage, launch, loadWholePage, settle } from '../../capture/lib';
 
 const URL = baseUrl('https://vite.dev');
 const footage = new Footage('vite');

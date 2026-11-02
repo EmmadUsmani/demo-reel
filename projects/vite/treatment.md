@@ -1,13 +1,13 @@
 # Vite — treatment (edit `vite`)
 
-A 19-second reel of [Vite](https://vite.dev)'s homepage, the open-source frontend build tool. It's a worked example of a **shots-only reel**: one full-page plate that the renderer pushes into and scrolls, between a title card and an end card, in the engine's **default theme**. It is in the house style ([`docs/STYLE.md`](../STYLE.md)); this file covers only what is specific to this reel.
+A 19-second reel of [Vite](https://vite.dev)'s homepage, the open-source frontend build tool. It's a worked example of a **shots-only reel**: one full-page plate that the renderer pushes into and scrolls, between a title card and an end card, in the engine's **default theme**. It is in the house style ([`docs/STYLE.md`](../../docs/STYLE.md)); this file covers only what is specific to this reel.
 
 ## Story
 
 | Scene | Beat | Narration | Footage |
 |---|---|---|---|
 | `title` (`title-card`) | polaroids of the headline and the install command, "Vite", "the build tool for the web", an "Open source · MIT licensed" chip | "Vite is an open-source build tool for the web." | shot `page`, boxes `headline`, `install` |
-| `page` (`vite-page`) | wide, then a push into the hero; the install command called out ("One command to start") | "Vite's homepage starts with the one command that makes a project." | shot `page`, scrolled to 0 |
+| `page` (`scenes/page.ts`) | wide, then a push into the hero; the install command called out ("One command to start") | "Vite's homepage starts with the one command that makes a project." | shot `page`, scrolled to 0 |
 | | back out, scroll down to "Redefining developer experience" ("What it's built for") | "Further down: an instant dev server, and updates as you save." | shot `page`, scrolled to 1000 |
 | `end` (`end-card`) | the headline, "Vite", "open source, at vite.dev", three chips | "That's Vite. Thanks for watching!" | shot `page`, box `headline` |
 
@@ -22,4 +22,4 @@ A 19-second reel of [Vite](https://vite.dev)'s homepage, the open-source fronten
 ## Capture needs
 
 - Network access to vite.dev (or `BASE_URL`).
-- `bun capture/vite.ts` runs in about 15 seconds and fails if the banner can't be dismissed or a box isn't found.
+- `bun projects/vite/capture.ts` runs in about 15 seconds and fails if the banner can't be dismissed or a box isn't found.

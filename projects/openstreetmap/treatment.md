@@ -7,7 +7,7 @@ A 34-second reel of [OpenStreetMap](https://www.openstreetmap.org), the free map
 | Scene | Beat | Narration | Footage |
 |---|---|---|---|
 | `title` (`title-card`) | polaroids of the pinned result and of the street map, "OpenStreetMap", "the free map of the world", "Open data · made by its community" | "OpenStreetMap is a free map of the world, made by its community." | clip `session`, marks `found`, `done` |
-| `session` (`openstreetmap-session`) | wide on the map, a search typed ("Search any place") | "Type a place name, and press Enter." | `start` → `results` |
+| `session` (`scenes/session.ts`) | wide on the map, a search typed ("Search any place") | "Type a place name, and press Enter." | `start` → `results` |
 | | the map flies to the city and pins it ("A pin on the result") | "The map flies to the city and drops a pin on it." | `results` → `found` (held 3.4 s) |
 | | three zoom clicks ("Zoom in") | "Zoom in a level at a time, all the way down to the streets." | `found` → `zoomed` |
 | | street level, the credit line ("Mapped by contributors") | "Every street here is open data, mapped by its community." | `zoomed` → `done` (held 4.2 s) |
@@ -27,4 +27,4 @@ A 34-second reel of [OpenStreetMap](https://www.openstreetmap.org), the free map
 ## Capture needs
 
 - Network access to openstreetmap.org and its tile servers.
-- `bun capture/openstreetmap.ts` takes about 70 seconds and records 14 s.
+- `bun projects/openstreetmap/capture.ts` takes about 70 seconds and records 14 s.

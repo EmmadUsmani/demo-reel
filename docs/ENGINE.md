@@ -4,24 +4,24 @@ Every video is a web app (`app/`, TypeScript + Canvas2D, run with bun + Vite) th
 
 ## Edits and themes
 
-One engine renders several videos. An **edit** is a timeline function in `app/src/timeline.ts`, registered in `EDITS` as `{ timeline, theme? }`. Choose one with `?edit=<name>` in the preview and `--edit <name>` in `render.ts` / `audio.ts` (default: the first one registered; the audio lands in `out/audio-<edit>/`).
-- Scenes are shared by file. An entry's `params` configure a reusable scene: `title-card`, `chapter`, `end-card` (each documents its params at the top of the file).
-- An edit can reuse another's entries by calling its timeline function and editing the result.
-- A new edit adds its own scenes, prefixed with the edit's name (`todomvc-*.ts`, with shared helpers in `<edit>-common.ts`), its capture script and footage directory, and a treatment in `docs/edits/`.
+One engine renders several videos. Each video is a **project** in `projects/<name>/`, and its **edit** is `projects/<name>/timeline.ts`, whose default export is `{ timeline, theme? }`. `app/src/timeline.ts` collects them all (a glob over `projects/*/timeline.ts`), so a new project needs no registration. Choose one with `?edit=<name>` in the preview and `--edit <name>` in `render.ts` / `audio.ts` (default: the first one registered; the audio lands in `out/audio-<edit>/`).
+- A project's timeline builds its entries with `const E = entries(import.meta.glob('./scenes/*.ts'))` (`@engine/edit`): `E(id, 'name')` loads the project's own `scenes/name.ts`, else the shared `app/src/scenes/name.ts`. An entry's `params` configure a reusable scene: `title-card`, `chapter`, `end-card` (each documents its params at the top of the file).
+- A project can reuse another's entries by importing its default export and editing the result of `timeline()`.
+- A new project is one directory: `capture.ts`, `timeline.ts`, `scenes/`, `footage/` (written by the capture), and `treatment.md`. Scenes import the engine through the `@engine/` alias (`@engine/clip-scene`, `@engine/draw`...).
 - A **theme** (`palette.ts` `Theme`) overrides any colour token (`colors`), the three font roles (`fonts`), and adds font files (`fontFiles`). `main.ts` applies it before the scenes load, and every drawing helper reads `C` / `FONT` at render time. The default is a neutral indigo with Inter and Instrument Serif.
 - See `docs/WORKFLOW.md` for the whole process.
 
 ## Pipeline
 
-1. **Capture** (`capture/`): headless Chrome drives the real app and writes `footage/<name>/`: DPR-2 PNG plates plus `manifest.json` with each plate's scroll offset and the boxes (document CSS px) of the elements scenes aim at.
-2. **Compose** (`app/src/scenes/`): scenes draw plates into a browser window, move the camera, cursor and callouts by those boxes.
+1. **Capture** (`projects/<name>/capture.ts`, on the shared toolkit in `capture/`): headless Chrome drives the real app and writes `projects/<name>/footage/`: DPR-2 PNG plates plus `manifest.json` with each plate's scroll offset and the boxes (document CSS px) of the elements scenes aim at.
+2. **Compose** (`projects/<name>/scenes/`, plus the shared cards in `app/src/scenes/`): scenes draw plates into a browser window, move the camera, cursor and callouts by those boxes.
 3. **Render** (`scripts/render.ts`): stills, contact sheets, a motion check, and the video.
 
 ## Running things
 
 ```sh
 bun install
-bun capture/todomvc.ts           # films a public site; BASE_URL=<url> films another build
+bun projects/todomvc/capture.ts  # films a public site; BASE_URL=<url> films another build
 bunx vite                        # preview at http://localhost:5180/?edit=todomvc&t=12
 ```
 
@@ -68,7 +68,7 @@ footage.save();
 - Locate elements by role, accessible name or test id, never by coordinates.
 - A full-page plate scrolled by the renderer is faithful only when the page has no sticky or fixed elements in view; if it does, record the scroll as a clip (`rec.wheel`) instead.
 - Anything animated on the page that must keep moving (a logo marquee) is hidden in the plates and lifted out on its own, so the renderer can replay it on the video's clock: `hideMarquee(page, track)` before the shots, `footage.extras.marquee = await liftMarquee(page, footage, track, loopSeconds)` last, `view.marquee(page, railBox, t)` in the scene.
-- `footage/**/*.png` and `*.jpg` are gitignored (large, regenerable); `manifest.json` is committed.
+- `projects/*/footage/**/*.png` and `*.jpg` are gitignored (large, regenerable); `manifest.json` is committed.
 
 ## Recording the app's motion (clips)
 
@@ -86,13 +86,13 @@ Stills can't carry the app's own motion (an item flying into a list, a drag, a s
 - The virtual clock finishes an animation it has stepped to its end. A paused animation never resolves its `finished` promise, and UI libraries wait on it before unmounting an exiting tooltip or panel; without this they stay on screen forever.
 - Gotchas: a drag path that crosses other elements under pointer capture leaves their hover/tooltip state stuck (enter without leave), so route drags clear of them and nudge the pointer after a drop; a panel rendered twice needs the copy that is actually on top; anything that changes server-side state is the demo's own UI action, never a direct write. The clip's own ends are always `'start'` and `'end'` in `player.play()` / `hold()`, even if you also named a mark `start`.
 
-Check a clip with `bun capture/peek.ts <footage> <clip> [frames]` (a contact sheet of the JPEGs, plus its marks).
+Check a clip with `bun capture/peek.ts <project> <clip> [frames]` (a contact sheet of the JPEGs, plus its marks).
 
 In a scene, `ClipScene` (`engine/clip-scene.ts`) does the shared work. `plan(player)` lays out playback as segments (`player.play(fromMark, toMark, rate)`, `player.hold(seconds)`), so a beat can be held for its narration (or sped up) without re-recording; `player.timeOf(mark)` and `this.presses` anchor narration, cues and camera keys to the recording itself. `source.host` rewrites the address bar's host (a dev server's `localhost:3000` reads as the product's domain). Frames decode lazily (an LRU of a dozen 2880×1800 bitmaps) in `prepare(t)`, which the engine awaits before every draw.
 
 ## Writing a scene
 
-One file in `app/src/scenes/`, default-exporting a `Scene` subclass, registered in `src/timeline.ts`:
+One file in the project's `scenes/`, default-exporting a `Scene` subclass, named by an entry in the project's `timeline.ts`:
 
 ```ts
 export default class MyScene extends Scene {

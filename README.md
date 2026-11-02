@@ -7,7 +7,7 @@ No music, ever: the soundtrack is a locally voiced narrator (Kokoro, open weight
 - **How to make a video**, start to finish, with the checks it must pass: [`docs/WORKFLOW.md`](docs/WORKFLOW.md)
 - **The house style** (look, motion, voice, sound, honesty rules): [`docs/STYLE.md`](docs/STYLE.md)
 - **The engine's APIs** (capture, recorder, scenes, themes, rendering): [`docs/ENGINE.md`](docs/ENGINE.md)
-- **Each edit's treatment**: [`docs/edits/`](docs/edits/)
+- **Each project's treatment**: [`projects/`](projects/) (`projects/<name>/treatment.md`)
 
 ## Gallery
 
@@ -15,19 +15,32 @@ Five edits, all filmed from real, running open-source apps. Each links to its tr
 
 | | |
 |---|---|
-| [![Excalidraw: drawing a flow](docs/img/ex.jpg)](docs/edits/excalidraw.md)<br>**[Excalidraw](docs/edits/excalidraw.md)** · 0:48<br>Real drags and typing on a canvas. | [![Hoppscotch: a live API request](docs/img/hop.jpg)](docs/edits/hoppscotch.md)<br>**[Hoppscotch](docs/edits/hoppscotch.md)** · 0:38<br>Two live requests, and the response echoing them. |
-| [![OpenStreetMap: zooming to the streets](docs/img/osm.jpg)](docs/edits/openstreetmap.md)<br>**[OpenStreetMap](docs/edits/openstreetmap.md)** · 0:34<br>A search, a fly-to, and live map tiles. | [![TodoMVC: filtering a list](docs/img/todo.jpg)](docs/edits/todomvc.md)<br>**[TodoMVC](docs/edits/todomvc.md)** · 0:27<br>A recorded session, wearing the app's own red. |
-| [![Vite: the title card](docs/img/vite.jpg)](docs/edits/vite.md)<br>**[Vite](docs/edits/vite.md)** · 0:19<br>Shots only: one full-page plate, moved over. | |
+| [![Excalidraw: drawing a flow](docs/img/ex.jpg)](projects/excalidraw/treatment.md)<br>**[Excalidraw](projects/excalidraw/treatment.md)** · 0:48<br>Real drags and typing on a canvas. | [![Hoppscotch: a live API request](docs/img/hop.jpg)](projects/hoppscotch/treatment.md)<br>**[Hoppscotch](projects/hoppscotch/treatment.md)** · 0:38<br>Two live requests, and the response echoing them. |
+| [![OpenStreetMap: zooming to the streets](docs/img/osm.jpg)](projects/openstreetmap/treatment.md)<br>**[OpenStreetMap](projects/openstreetmap/treatment.md)** · 0:34<br>A search, a fly-to, and live map tiles. | [![TodoMVC: filtering a list](docs/img/todo.jpg)](projects/todomvc/treatment.md)<br>**[TodoMVC](projects/todomvc/treatment.md)** · 0:27<br>A recorded session, wearing the app's own red. |
+| [![Vite: the title card](docs/img/vite.jpg)](projects/vite/treatment.md)<br>**[Vite](projects/vite/treatment.md)** · 0:19<br>Shots only: one full-page plate, moved over. | |
 
-The stills above are frames of the rendered videos. The MP4s themselves are not committed (renders are gitignored); `bun capture/<edit>.ts` and the render commands below make them in a few minutes each.
+The stills above are frames of the rendered videos. The MP4s themselves are not committed (renders are gitignored); `bun projects/<name>/capture.ts` and the render commands below make them in a few minutes each.
 
 ## Layout
 
-- `capture/` — Playwright (playwright-core, system Chrome) scripts that drive the real app and write `footage/<name>/`.
-- `footage/` — the captured plates (gitignored) and their `manifest.json` (committed).
-- `app/` — the renderer (TypeScript + Canvas2D, bun + Vite): `src/engine/` (timeline, window/camera/cursor, drawing, theme), `src/scenes/` (one module per beat, plus reusable title, chapter and end cards), `src/timeline.ts` (the edits and their themes).
-- `scripts/render.ts` — offline renderer (headless Chrome → raw frames over WebSocket → ffmpeg); `scripts/audio.ts` — the soundtrack (narration + sound effects, placed by the scenes' own cues).
-- `out/` — renders, stills and contact sheets (gitignored).
+The repo is organised **by project**: everything specific to one video is in one directory, and everything shared is outside `projects/`.
+
+```
+projects/<name>/        one video, and only that video's files
+  capture.ts            drives the real app and writes footage/
+  timeline.ts           the edit: which scenes play when, and its theme
+  scenes/               its beats, one module each
+  footage/              captured plates (gitignored) and manifest.json (committed)
+  treatment.md          the story, honesty notes and capture needs
+app/src/engine/         shared: timeline, window/camera/cursor, drawing, theme
+app/src/scenes/         shared: the reusable title, chapter and end cards
+capture/                shared: the capture toolkit (browser launch, virtual clock, recorder, peek)
+scripts/                shared: render.ts (stills, sheets, motion check, MP4) and audio.ts (narration + sound)
+docs/                   the workflow, house style and engine guides
+out/                    renders, stills and contact sheets (gitignored)
+```
+
+Adding a video means adding one directory under `projects/`; there is nothing to register.
 
 ## Requirements
 
@@ -37,7 +50,7 @@ The stills above are frames of the rendered videos. The MP4s themselves are not 
 
 ```sh
 bun install
-bun capture/todomvc.ts                          # films todomvc.com's React app (~40 s)
+bun projects/todomvc/capture.ts                 # films todomvc.com's React app (~40 s)
 bunx vite                                        # preview: http://localhost:5180/?edit=todomvc
 bun scripts/audio.ts --edit todomvc              # narration + sound effects → out/audio-todomvc/mix.wav
 bun scripts/render.ts video --edit todomvc --audio out/audio-todomvc/mix.wav --out out/todomvc.mp4
@@ -52,14 +65,14 @@ bun scripts/render.ts video --edit todomvc --audio out/audio-todomvc/mix.wav --o
 
 | Edit | What it shows | Footage | Length |
 |---|---|---|---|
-| `todomvc` | [TodoMVC](https://todomvc.com)'s React app: three todos added, one completed, the Active filter. One recorded session; wears TodoMVC's own red through an edit theme. | `bun capture/todomvc.ts` (a recorded clip) | 0:27 |
-| `vite` | [Vite](https://vite.dev)'s homepage: a push into the install command, then a scroll to the features. Shots only, in the default theme. | `bun capture/vite.ts` (one full-page plate) | 0:19 |
-| `excalidraw` | [Excalidraw](https://excalidraw.com): pick a shape, drag it out, label it, then join a rectangle, a diamond and an ellipse with arrows. | `bun capture/excalidraw.ts` (a recorded clip, real drags and typing) | 0:48 |
-| `hoppscotch` | [Hoppscotch](https://hoppscotch.io): add a query parameter to a request, send it, and read the echo of it in the real response; then a second parameter. | `bun capture/hoppscotch.ts` (a recorded clip, two live requests) | 0:38 |
-| `openstreetmap` | [OpenStreetMap](https://www.openstreetmap.org): search a city, watch the map fly to it, zoom down to the streets. | `bun capture/openstreetmap.ts` (a recorded clip, live map tiles) | 0:34 |
+| `todomvc` | [TodoMVC](https://todomvc.com)'s React app: three todos added, one completed, the Active filter. One recorded session; wears TodoMVC's own red through an edit theme. | `bun projects/todomvc/capture.ts` (a recorded clip) | 0:27 |
+| `vite` | [Vite](https://vite.dev)'s homepage: a push into the install command, then a scroll to the features. Shots only, in the default theme. | `bun projects/vite/capture.ts` (one full-page plate) | 0:19 |
+| `excalidraw` | [Excalidraw](https://excalidraw.com): pick a shape, drag it out, label it, then join a rectangle, a diamond and an ellipse with arrows. | `bun projects/excalidraw/capture.ts` (a recorded clip, real drags and typing) | 0:48 |
+| `hoppscotch` | [Hoppscotch](https://hoppscotch.io): add a query parameter to a request, send it, and read the echo of it in the real response; then a second parameter. | `bun projects/hoppscotch/capture.ts` (a recorded clip, two live requests) | 0:38 |
+| `openstreetmap` | [OpenStreetMap](https://www.openstreetmap.org): search a city, watch the map fly to it, zoom down to the streets. | `bun projects/openstreetmap/capture.ts` (a recorded clip, live map tiles) | 0:34 |
 
 `todomvc` and `vite` are the short worked examples of the two ways to film: a frame-by-frame recording of the app's own motion, and still plates the renderer moves over. The other three are fuller recorded sessions (drawing on a canvas, a live network request, a live map). All five film public open-source sites, so they re-record anywhere with a network connection. Point `BASE_URL` at a local or self-hosted build to film that instead.
 
-Every edit has a treatment in [`docs/edits/`](docs/edits/): its story, what is specific to it, and what the capture needs.
+Every project has a treatment (`projects/<name>/treatment.md`): its story, what is specific to it, and what the capture needs.
 
 To make your own, follow [`docs/WORKFLOW.md`](docs/WORKFLOW.md): write a treatment, a capture script, a scene or two and a timeline entry.

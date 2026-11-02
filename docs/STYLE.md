@@ -1,6 +1,6 @@
 # House style
 
-Every video this engine makes follows these rules. Each edit's own treatment (`docs/edits/<edit>.md`) adds only what is specific to that edit. Where this guide and a treatment disagree, the treatment wins for that edit, and it should say why.
+Every video this engine makes follows these rules. Each edit's own treatment (`projects/<name>/treatment.md`) adds only what is specific to that edit. Where this guide and a treatment disagree, the treatment wins for that edit, and it should say why.
 
 ## What these videos are
 

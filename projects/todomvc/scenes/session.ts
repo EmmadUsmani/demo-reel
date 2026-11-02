@@ -1,12 +1,12 @@
 // TodoMVC (React): three todos typed in, one ticked off, then the Active filter. One recorded
 // session, held at each result for its line.
-import type { ClipPlayer } from '../engine/clip';
-import { ClipScene, type CameraKey } from '../engine/clip-scene';
-import { beat, grow } from '../engine/beats';
-import { highlight, label } from '../engine/draw';
-import type { Cue, Frame, Line } from '../engine/scene';
-import { ease } from '../engine/util';
-import { insideWindow } from '../engine/view';
+import type { ClipPlayer } from '@engine/clip';
+import { ClipScene, type CameraKey } from '@engine/clip-scene';
+import { beat, grow } from '@engine/beats';
+import { highlight, label } from '@engine/draw';
+import type { Cue, Frame, Line } from '@engine/scene';
+import { ease } from '@engine/util';
+import { insideWindow } from '@engine/view';
 
 const INTRO = 0.9; // wide on the empty app before the push
 const ADDED_HOLD = 2.0;

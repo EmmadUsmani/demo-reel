@@ -1,11 +1,12 @@
 #!/usr/bin/env bun
 // A contact sheet of a recorded clip, for checking it without rendering the video.
-//   bun capture/peek.ts <footage> <clip> [frames=16] [cols=4]   → out/peek/<footage>-<clip>.png
+//   bun capture/peek.ts <project> <clip> [frames=16] [cols=4]   → out/peek/<project>-<clip>.png
+// (reads projects/<project>/footage/)
 import { mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 const [name, id, count = '16', cols = '4'] = process.argv.slice(2);
-if (!name || !id) throw new Error('usage: bun capture/peek.ts <footage> <clip> [frames=16] [cols=4]');
-const dir = path.resolve(import.meta.dir, '../footage', name);
+if (!name || !id) throw new Error('usage: bun capture/peek.ts <project> <clip> [frames=16] [cols=4]');
+const dir = path.resolve(import.meta.dir, '../projects', name, 'footage');
 const clip = JSON.parse(readFileSync(path.join(dir, 'manifest.json'), 'utf8')).clips[id];
 if (!clip) throw new Error(`no clip ${id} in ${name}`);
 const n = Math.min(+count, clip.frames.length);

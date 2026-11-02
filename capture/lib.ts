@@ -19,7 +19,8 @@ export const baseUrl = (fallback: string) => (process.env.BASE_URL ?? fallback).
 export const VIEWPORT = { width: 1440, height: 900 };
 export const DPR = 2;
 
-export const FOOTAGE = path.resolve(import.meta.dir, '../footage');
+/** Every project keeps its own files in projects/<name>/; its footage is in projects/<name>/footage/. */
+export const PROJECTS = path.resolve(import.meta.dir, '../projects');
 
 export type Box = { x: number; y: number; w: number; h: number };
 export type Shot = { file: string; w: number; h: number; scrollY: number; boxes: Record<string, Box> };
@@ -102,7 +103,7 @@ export async function boxOf(locator: Locator): Promise<Box> {
 
 const round = (value: number) => Math.round(value * 10) / 10;
 
-/** One capture session: screenshots land in footage/<name>/, the manifest beside them. */
+/** One capture session for project <name>: screenshots land in projects/<name>/footage/, the manifest beside them. */
 export class Footage {
   readonly dir: string;
   readonly shots: Record<string, Shot> = {};
@@ -112,7 +113,7 @@ export class Footage {
   readonly clips: Record<string, Clip> = {};
 
   constructor(readonly name: string) {
-    this.dir = path.join(FOOTAGE, name);
+    this.dir = path.join(PROJECTS, name, 'footage');
     mkdirSync(this.dir, { recursive: true });
   }
 

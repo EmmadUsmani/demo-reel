@@ -1,12 +1,12 @@
 // Excalidraw: pick a shape, drag it out, label it, then join three shapes with arrows. One recorded
 // session, held at each result for its line. Nothing is sped up.
-import type { ClipPlayer } from '../engine/clip';
-import { ClipScene, type CameraKey } from '../engine/clip-scene';
-import { beat, grow, union } from '../engine/beats';
-import { highlight, label } from '../engine/draw';
-import type { Cue, Frame, Line } from '../engine/scene';
-import { ease } from '../engine/util';
-import { insideWindow } from '../engine/view';
+import type { ClipPlayer } from '@engine/clip';
+import { ClipScene, type CameraKey } from '@engine/clip-scene';
+import { beat, grow, union } from '@engine/beats';
+import { highlight, label } from '@engine/draw';
+import type { Cue, Frame, Line } from '@engine/scene';
+import { ease } from '@engine/util';
+import { insideWindow } from '@engine/view';
 
 const INTRO = 0.8; // wide on the empty canvas before the push
 const TOOL_HOLD = 3.6; // on the toolbar

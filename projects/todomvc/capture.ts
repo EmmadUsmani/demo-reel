@@ -7,8 +7,8 @@
 // browser context means an empty list every take. Nothing leaves the browser: the app keeps its
 // todos in localStorage.
 import type { Page } from 'playwright-core';
-import { baseUrl, Footage, launch, settle } from './lib';
-import { Recorder } from './record';
+import { baseUrl, Footage, launch, settle } from '../../capture/lib';
+import { Recorder } from '../../capture/record';
 
 const URL = baseUrl('https://todomvc.com/examples/react/dist');
 const TODOS = ['Record the demo', 'Write the narration', 'Render the video'];

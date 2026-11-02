@@ -8,8 +8,8 @@
 // ever show the top of the response and the capture never scrolls it. No account, nothing saved:
 // the app is used signed out, in a fresh browser context.
 import type { Page } from 'playwright-core';
-import { baseUrl, Footage, launch, settle } from './lib';
-import { Recorder } from './record';
+import { baseUrl, Footage, launch, settle } from '../../capture/lib';
+import { Recorder } from '../../capture/record';
 
 const URL = baseUrl('https://hoppscotch.io');
 const footage = new Footage('hoppscotch');

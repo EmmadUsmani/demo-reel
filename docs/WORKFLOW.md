@@ -3,15 +3,16 @@
 This is the end-to-end process for every video this engine makes, from a brief to a checked MP4. Read alongside:
 - [`STYLE.md`](STYLE.md): how every video looks and sounds;
 - [`ENGINE.md`](ENGINE.md): the APIs;
-- an existing edit's treatment in [`edits/`](edits/), as a worked example (`todomvc.md` for a recorded session, `vite.md` for a shots-only reel).
+- an existing project's treatment in [`projects/`](../projects/), as a worked example (`todomvc/treatment.md` for a recorded session, `vite/treatment.md` for a shots-only reel).
 
 The short version: **brief → treatment → app state → capture → look at the footage → scenes → look at the stills, cuts and motion → narration and sound → render → check the MP4 → deliver.** Every arrow is a gate: don't move on until the check before it passes. A video is done when every check in [the checklist](#the-checklist) passes, not when it renders.
 
 ## 0. Vocabulary
 
-- **Edit**: one video. Its timeline is a function in `app/src/timeline.ts`, registered in `EDITS` with an optional theme, and chosen with `?edit=<name>` in the preview and `--edit <name>` in `render.ts` / `audio.ts`.
-- **Footage**: `footage/<name>/`, written by one capture script `capture/<name>.ts`. It holds PNG plates (`shots`), frame-by-frame recordings (`clips`, JPEG per frame), `extras` (any other image or data a scene needs), and `manifest.json`. Only the manifest is committed.
-- **Scene**: one beat, one file in `app/src/scenes/`. Its narration lines and sound cues are declared next to its animation. Title, chapter and end cards are reusable scenes configured by timeline `params`.
+- **Project**: one video, and everything specific to it, in `projects/<name>/`: `capture.ts`, `timeline.ts`, `scenes/`, `footage/` and `treatment.md`. Shared things (the engine, the reusable cards, the capture toolkit, the render and audio scripts) live outside `projects/`.
+- **Edit**: a project's timeline (`projects/<name>/timeline.ts`, default export `{ timeline, theme? }`), collected automatically and chosen with `?edit=<name>` in the preview and `--edit <name>` in `render.ts` / `audio.ts`.
+- **Footage**: `projects/<name>/footage/`, written by the project's one capture script `projects/<name>/capture.ts`. It holds PNG plates (`shots`), frame-by-frame recordings (`clips`, JPEG per frame), `extras` (any other image or data a scene needs), and `manifest.json`. Only the manifest is committed.
+- **Scene**: one beat, one file in the project's `scenes/` (the reusable cards are shared, in `app/src/scenes/`). Its narration lines and sound cues are declared next to its animation. Title, chapter and end cards are reusable scenes configured by timeline `params`.
 
 ## 1. Brief → treatment
 
@@ -22,7 +23,7 @@ Pin down, in writing, before touching the app:
 - **The honest notes:** is it live, coming soon, behind a flag, using hand-made demo data, sped up? Did you hide anything on the page for filming (a promo banner, a docs sidebar)?
 - **What the app has to be in for each beat:** the records, the user, the build.
 
-Write it as `docs/edits/<edit>.md`, following `edits/todomvc.md`: a story table (scene → beat → narration → footage), what is specific to the edit, and what the capture needs. When the brief comes from a person, they get the treatment to react to before you spend time on capture. When running unattended, make the calls yourself and record them in the treatment.
+Write it as `projects/<name>/treatment.md`, following `projects/todomvc/treatment.md`: a story table (scene → beat → narration → footage), what is specific to the edit, and what the capture needs. When the brief comes from a person, they get the treatment to react to before you spend time on capture. When running unattended, make the calls yourself and record them in the treatment.
 
 ## 2. The app, in the state the story needs
 
@@ -38,7 +39,7 @@ Write it as `docs/edits/<edit>.md`, following `edits/todomvc.md`: a story table 
 
 ## 3. Capture
 
-Write `capture/<name>.ts`: one script per footage directory, one session per script where possible. Pick the tool by what the beat shows:
+Write `projects/<name>/capture.ts`: one script per project, one session per script where possible. It imports the shared toolkit from `capture/` (`../../capture/lib`, `../../capture/record`). Pick the tool by what the beat shows:
 
 | The beat shows | Use | Example |
 |---|---|---|
@@ -55,15 +56,15 @@ Rules:
 - Make the script **re-runnable and self-checking**. Have it throw (or exit non-zero) when the app didn't reach the expected state or the content isn't showable, rather than recording a bad take.
 
 Run it, then **look at what it recorded**:
-- `bun capture/peek.ts <footage> <clip> 24`: a contact sheet of the clip, plus its marks. Open the PNG and read it. Check for the right state, tooltips stuck open, blank images, spinners, a cursor parked on something, and dev widgets.
+- `bun capture/peek.ts <project> <clip> 24`: a contact sheet of the clip, plus its marks. Open the PNG and read it. Check for the right state, tooltips stuck open, blank images, spinners, a cursor parked on something, and dev widgets.
 - For shots, open the PNGs themselves.
 - Re-record until the footage is clean. Fixing it in the edit is not an option, because the footage is the product.
 
 ## 4. Scenes and the timeline
 
-- Add a timeline function to `app/src/timeline.ts`, and register it in `EDITS` (with a `theme` if the product has its own colours).
+- Write `projects/<name>/timeline.ts`: build entries with `const E = entries(import.meta.glob('./scenes/*.ts'))` (from `@engine/edit`) and default-export `{ timeline, theme? }` (with a `theme` if the product has its own colours). It is picked up automatically; nothing to register.
 - Use the reusable cards where they fit: `title-card`, `chapter`, `end-card`, each configured by `params` (documented at the top of each file).
-- Add one scene per remaining beat: `app/src/scenes/<edit>-<beat>.ts`. Prefix shared helpers too (`<edit>-common.ts`).
+- Add one scene per remaining beat: `projects/<name>/scenes/<beat>.ts` (shared helpers for the project go beside them). Engine imports use the `@engine/` alias.
 - Recorded clips subclass `ClipScene`:
   - `plan()` lays out the playback;
   - `cameraKeys()` aims the camera;
@@ -124,7 +125,7 @@ Then check the file itself, not the app:
 
 ## 8. Deliver
 
-- **Commit:** the capture script, its `manifest.json`, the scenes, the timeline entry, the treatment, and a README line for the new edit (how to capture and render it, and its length). Never commit plates, renders, fonts you aren't licensed to redistribute, or secrets: `.gitignore` covers the usual ones.
+- **Commit:** the project directory (`capture.ts`, `timeline.ts`, `scenes/`, `footage/manifest.json`, `treatment.md`) and a README line for the new edit (how to capture and render it, and its length). Never commit plates, renders, fonts you aren't licensed to redistribute, or secrets: `.gitignore` covers the usual ones.
 - **The MP4** goes wherever the person asked; by default it's `out/<edit>.mp4`.
 - **The report** names:
   - the file and its length;

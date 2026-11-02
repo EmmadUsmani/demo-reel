@@ -6,8 +6,8 @@
 // filming. Shapes are canvas pixels, so the scene's labels aim at invisible marker elements placed at
 // the exact rectangle each drag drew; the markers add no pixels. Nothing leaves the browser.
 import type { Page } from 'playwright-core';
-import { baseUrl, Footage, launch, settle } from './lib';
-import { Recorder } from './record';
+import { baseUrl, Footage, launch, settle } from '../../capture/lib';
+import { Recorder } from '../../capture/record';
 
 const URL = baseUrl('https://excalidraw.com');
 const footage = new Footage('excalidraw');

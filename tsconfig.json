@@ -10,7 +10,8 @@
     "skipLibCheck": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "paths": { "@engine/*": ["./app/src/engine/*"] }
   },
-  "include": ["app/src", "scripts", "capture"]
+  "include": ["app/src", "projects", "scripts", "capture"]
 }

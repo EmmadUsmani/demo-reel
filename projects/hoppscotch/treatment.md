@@ -7,7 +7,7 @@ A 38-second reel of [Hoppscotch](https://hoppscotch.io), the open-source API cli
 | Scene | Beat | Narration | Footage |
 |---|---|---|---|
 | `title` (`title-card`) | polaroids of the parameter table and of the response, "Hoppscotch", "an open-source API client" | "Hoppscotch is an open-source client for trying out web APIs." | clip `session`, marks `param2`, `sent2` |
-| `session` (`hoppscotch-session`) | wide on the pre-filled request ("The request") | "Here's a request, already pointed at a public echo service." | `start` (held 4.2 s) |
+| `session` (`scenes/session.ts`) | wide on the pre-filled request ("The request") | "Here's a request, already pointed at a public echo service." | `start` (held 4.2 s) |
 | | a query parameter typed in ("Query parameter") | "Add a query parameter: a name, then a value." | `start` → `param1` |
 | | Send pressed | "Press Send." | `param1` → `sent1` |
 | | the response ("It worked", then "Echoed back") | "A status of two hundred, so the request worked." / "And your parameter is echoed back under args." | `sent1` (held 3.0 s + 2.9 s) |
@@ -28,4 +28,4 @@ A 38-second reel of [Hoppscotch](https://hoppscotch.io), the open-source API cli
 ## Capture needs
 
 - Network access to hoppscotch.io and echo.hoppscotch.io.
-- `bun capture/hoppscotch.ts` takes about 90 seconds, records 14 s, and throws if the echo doesn't reflect a parameter.
+- `bun projects/hoppscotch/capture.ts` takes about 90 seconds, records 14 s, and throws if the echo doesn't reflect a parameter.

@@ -76,6 +76,96 @@ function vite(): TimelineEntry[] {
   ];
 }
 
+// Excalidraw: one recorded session between a title card and an end card, in the default theme.
+function excalidraw(): TimelineEntry[] {
+  return [
+    E('title', 'title-card', {
+      params: {
+        name: 'Excalidraw',
+        subtitle: 'a whiteboard that looks hand-drawn',
+        kicker: 'Open source · MIT licensed',
+        line: 'Excalidraw is an open-source whiteboard for sketching diagrams.',
+        dur: 5.4,
+        cards: [
+          { footage: 'excalidraw', clip: 'session', at: 'done', key: 'idea', pad: 60 },
+          { footage: 'excalidraw', clip: 'session', at: 'done', key: 'share', pad: 60 },
+        ],
+      },
+    }),
+    E('session', 'excalidraw-session', { overlap: 0.5 }),
+    E('end', 'end-card', {
+      overlap: 0.5,
+      params: {
+        name: 'Excalidraw',
+        subtitle: 'open source, at excalidraw.com',
+        chips: ['Shapes', 'Labels', 'Arrows', 'Saved in the browser'],
+        line: 'That’s Excalidraw. Thanks for watching!',
+        card: { footage: 'excalidraw', clip: 'session', at: 'done', key: 'canvas', pad: 0 },
+      },
+    }),
+  ];
+}
+
+// Hoppscotch: one recorded session between a title card and an end card, in the default theme.
+function hoppscotch(): TimelineEntry[] {
+  return [
+    E('title', 'title-card', {
+      params: {
+        name: 'Hoppscotch',
+        subtitle: 'an open-source API client',
+        kicker: 'Open source · MIT licensed',
+        line: 'Hoppscotch is an open-source client for trying out web APIs.',
+        dur: 5.4,
+        cards: [
+          { footage: 'hoppscotch', clip: 'session', at: 'param2', key: 'key', pad: 150 },
+          { footage: 'hoppscotch', clip: 'session', at: 'sent2', key: 'value', pad: 150 },
+        ],
+      },
+    }),
+    E('session', 'hoppscotch-session', { overlap: 0.5 }),
+    E('end', 'end-card', {
+      overlap: 0.5,
+      params: {
+        name: 'Hoppscotch',
+        subtitle: 'open source, at hoppscotch.io',
+        chips: ['REST', 'Query parameters', 'Instant responses', 'No sign-in'],
+        line: 'That’s Hoppscotch. Thanks for watching!',
+        card: { footage: 'hoppscotch', clip: 'session', at: 'sent2', key: 'app', pad: 0 },
+      },
+    }),
+  ];
+}
+
+// OpenStreetMap: one recorded session between a title card and an end card, in the default theme.
+function openstreetmap(): TimelineEntry[] {
+  return [
+    E('title', 'title-card', {
+      params: {
+        name: 'OpenStreetMap',
+        subtitle: 'the free map of the world',
+        kicker: 'Open data · made by its community',
+        line: 'OpenStreetMap is a free map of the world, made by its community.',
+        dur: 5.4,
+        cards: [
+          { footage: 'openstreetmap', clip: 'session', at: 'found' },
+          { footage: 'openstreetmap', clip: 'session', at: 'done' },
+        ],
+      },
+    }),
+    E('session', 'openstreetmap-session', { overlap: 0.5 }),
+    E('end', 'end-card', {
+      overlap: 0.5,
+      params: {
+        name: 'OpenStreetMap',
+        subtitle: 'open data, at openstreetmap.org',
+        chips: ['Search', 'Pan and zoom', 'Open data', 'Free to use'],
+        line: 'That’s OpenStreetMap. Thanks for watching!',
+        card: { footage: 'openstreetmap', clip: 'session', at: 'done' },
+      },
+    }),
+  ];
+}
+
 const TODOMVC_RED: Theme = {
   colors: {
     accent050: '#fdf2f2', accent100: '#fbe4e4', accent200: '#f5c4c6', accent300: '#eb9a9e', accent400: '#dd6d73',
@@ -87,4 +177,7 @@ const TODOMVC_RED: Theme = {
 export const EDITS: Record<string, Edit> = {
   todomvc: { timeline: todomvc, theme: TODOMVC_RED },
   vite: { timeline: vite },
+  excalidraw: { timeline: excalidraw },
+  hoppscotch: { timeline: hoppscotch },
+  openstreetmap: { timeline: openstreetmap },
 };

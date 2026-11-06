@@ -11,7 +11,7 @@ import { baseUrl, Footage, launch, settle } from '../../capture/lib';
 import { Recorder } from '../../capture/record';
 
 const URL = baseUrl('https://www.qiyami.com');
-const CITY = 'Seattle'; // same time zone as the filming machine: the site shows times in the browser's zone
+const CITY = 'San Jose'; // same time zone as the filming machine: the site shows times in the browser's zone
 const footage = new Footage('qiyami');
 
 const region = (page: Page) => page.getByRole('region', { name: /Prayer timeline/ });
@@ -23,7 +23,7 @@ const settingsBtn = (page: Page) => page.getByRole('button', { name: 'Open setti
 const sheet = (page: Page) => page.getByRole('dialog');
 const hanafi = (page: Page) => page.getByRole('button', { name: 'Hanafi' });
 const cityBox = (page: Page) => page.getByRole('textbox', { name: 'Enter a city name' });
-const suggestion = (page: Page) => page.getByRole('button', { name: new RegExp(`^${CITY}, Washington`) }).first();
+const suggestion = (page: Page) => page.getByRole('button', { name: new RegExp(`^${CITY}, California`) }).first();
 const save = (page: Page) => page.getByRole('button', { name: 'Save Settings' });
 
 const { browser, page } = await launch();
@@ -74,7 +74,10 @@ try {
   await rec.click();
   await rec.until(page.getByText('(Override)'));
   await rec.hold(1.6);
-  if (!(await header(page).innerText()).includes(CITY)) throw new Error(`the header does not show ${CITY} after saving`);
+  const shown = await header(page).innerText();
+  if (!shown.includes(CITY)) throw new Error(`the header does not show ${CITY} after saving`);
+  // wet weather turns the page's backdrop into an animation that flickers frame to frame under the recorder
+  if (/drizzle|rain|shower|snow|thunder|storm|fog/i.test(shown)) throw new Error(`the weather is not filmable (${shown.replace(/\s+/g, ' ')}); pick another city or retake later`);
   await rec.moveTo(720, 820, 0.7);
   await rec.hold(0.3);
   await rec.mark('saved', { app: page.locator('main'), header: header(page), region: region(page), times: times(page), night: night(page) });

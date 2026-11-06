@@ -18,12 +18,13 @@ A 47-second reel of [Qiyami](https://www.qiyami.com): a free, in-browser prayer-
 ## Honesty notes
 
 - **Live data, filmed once.** The times, weather and countdown are the site's own for the day filmed (2026-11-06). The countdown runs on the recorder's virtual clock, so it ticks at real speed. Nothing is sped up.
-- **Location.** The site guesses by IP; its own header reads "(IP Approximate Location)" at the start. The city override (Seattle, WA) is chosen through the real settings sheet during the recording. Switching Asr from Shafi to Hanafi is also done in the sheet; Asr's time moved only slightly and is not called out.
-- **Why Seattle, not a faraway city.** Tried Istanbul first: the site shows a city's prayer times in the *browser's* time zone (Fajr read "7:23 PM"), which would mislead a viewer. Seattle matches the filming machine's zone (PST), so every time on screen is the true local time. Worth telling the site's owner.
+- **Location.** The site guesses by IP; its own header reads "(IP Approximate Location)" at the start. The city override (San Jose, CA) is chosen through the real settings sheet during the recording. Switching Asr from Shafi to Hanafi is also done in the sheet; Asr's time moved only slightly and is not called out.
+- **Why San Jose, not a faraway city.** Tried Istanbul first: the site shows a city's prayer times in the *browser's* time zone (Fajr read "7:23 PM"), which would mislead a viewer. San Jose matches the filming machine's zone (PST), so every time on screen is the true local time. Worth telling the site's owner.
+- **Why not a wet city (Seattle, "Light Drizzle").** With rain, drizzle or snow the site's backdrop becomes an animation that flickers from frame to frame under the frame-by-frame recorder. The capture throws if the weather after saving is wet, so a retake never records it; the city has to be one that is dry that day.
 - **The city-search list shows the first result twice** (the site's own duplicate entry). It is on screen for a moment before the save and left as the app draws it.
 - **The app re-runs its city search after a pick**, so the capture waits 2 s before pressing Save, or the choice is dropped.
 - Nothing on the page is hidden or edited. A React hydration warning (#418) appears in the console; it has no visible effect.
-- `jumps` flags five frames, all the app's own instant changes: the settings sheet opening (27.7 s, dims the page), three typing/option frames, and the page re-theming on Save (35.6 s).
+- `jumps` flags four frames, all the app's own instant changes: the settings sheet opening (27.7 s, dims the page), three typing/option frames, and the sheet closing on Save (35.5 s).
 
 ## Left out
 
@@ -31,4 +32,4 @@ The "Use precise GPS" button (it needs a browser permission prompt), the tempera
 
 ## Capture needs
 
-Network access to qiyami.com plus its geocoding and weather APIs. `bun projects/qiyami/capture.ts` takes about 2.5 minutes, and throws if the header does not read the override city after saving.
+Network access to qiyami.com plus its geocoding and weather APIs. `bun projects/qiyami/capture.ts` takes about 2.5 minutes, and throws if the header does not read the override city after saving, or if the weather there is wet.

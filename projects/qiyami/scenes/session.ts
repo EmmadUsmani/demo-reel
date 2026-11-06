@@ -1,3 +1,5 @@
+// Spoken lines respell Arabic words for the narrator (Keeyaami, Tahhajjood, Kuhrahn, Haadeeth, Ahsir);
+// the screen keeps the real spelling.
 // Qiyami: the dashboard (countdown, times, last third of the night, verses), then the settings
 // sheet: Asr method and a city override, saved. One recorded session, held at each beat for its line.
 import type { ClipPlayer } from '@engine/clip';
@@ -33,9 +35,9 @@ export default class QiyamiSession extends ClipScene {
     const p = this.presses;
     return [
       { id: 'countdown', at: this.at('countdown') + 0.2, until: this.at('countdown') + COUNTDOWN_HOLD, text: 'Today’s prayers on one screen, with a live countdown to the next.' },
-      { id: 'night', at: this.at('night') + 0.2, until: this.at('night') + NIGHT_HOLD, text: 'It also finds the last third of the night, for Tahajjud.' },
-      { id: 'verses', at: this.at('verses') + 0.2, until: this.at('verses') + VERSES_HOLD, text: 'Below, the Qur’an and hadith behind night prayer.' },
-      { id: 'settings', at: p[0]! + 0.3, until: p[2]! - 0.1, text: 'Pick a calculation method and Asr school.' },
+      { id: 'night', at: this.at('night') + 0.2, until: this.at('night') + NIGHT_HOLD, text: 'It also finds the last third of the night, for Tahhajjood.' },
+      { id: 'verses', at: this.at('verses') + 0.2, until: this.at('verses') + VERSES_HOLD, text: 'Below, the Kuhrahn and Haadeeth behind night prayer.' },
+      { id: 'settings', at: p[0]! + 0.3, until: p[2]! - 0.1, text: 'Pick a calculation method and Ahsir school.' },
       { id: 'city', at: p[2]! + 0.1, until: p[4]! - 0.1, text: 'Or search any city to fix your location.' },
       { id: 'saved', at: p[4]! + 0.3, until: this.at('saved') + SAVED_HOLD, text: 'Save, and every time follows.' },
     ];

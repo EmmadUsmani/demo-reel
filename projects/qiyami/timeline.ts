@@ -1,4 +1,5 @@
 // Qiyami (qiyami.com): a title card, one recorded session, an end card.
+// The narration lines respell "Qiyami" as "Keeyaami" for the voice; the screen keeps the real spelling.
 import { entries } from '@engine/edit';
 import type { Edit } from '@engine/edit';
 
@@ -11,7 +12,7 @@ export default {
         name: 'Qiyami',
         subtitle: 'prayer times and the last third of the night',
         kicker: 'Free · in your browser',
-        line: 'Qiyami shows today’s prayer times, and when the last third of the night begins.',
+        line: 'Keeyaami shows today’s prayer times, and when the last third of the night begins.',
         dur: 6,
         cards: [
           { footage: 'qiyami', clip: 'session', at: 'start', key: 'region', pad: 2 },
@@ -26,7 +27,7 @@ export default {
         name: 'Qiyami',
         subtitle: 'at qiyami.com',
         chips: ['Prayer times', 'Last third of the night', 'Any city', 'Calculation methods'],
-        line: 'That’s Qiyami, at qiyami dot com.',
+        line: 'That’s Keeyaami, at keeyaami dot com.',
         card: { footage: 'qiyami', clip: 'session', at: 'saved', key: 'app', pad: 20 },
       },
     }),

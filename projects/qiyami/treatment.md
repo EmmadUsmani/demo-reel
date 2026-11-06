@@ -26,6 +26,20 @@ A 47-second reel of [Qiyami](https://www.qiyami.com): a free, in-browser prayer-
 - Nothing on the page is hidden or edited. A React hydration warning (#418) appears in the console; it has no visible effect.
 - `jumps` flags four frames, all the app's own instant changes: the settings sheet opening (27.7 s, dims the page), three typing/option frames, and the sheet closing on Save (35.5 s).
 
+## Pronunciation
+
+The narrator (Kokoro `af_heart`) mangles Arabic words, so the spoken lines respell them; the screen keeps the real spelling. Chosen by reading `phonemizer`'s IPA for each candidate, one stressed vowel per word:
+
+| On screen | Spoken as | IPA the voice gets |
+|---|---|---|
+| Qiyami | Keeyaami | kˈiːjɑːmi (was kɪjˈɑːmi) |
+| Tahajjud | Tahhajjood | tˈɑːhɐdʒˌuːd (was tˈæhɐdʒˌʌd) |
+| Qur'an | Kuhrahn | kˈuːɹɑːn (was kwɚɹˈæn) |
+| hadith | Haadeeth | hˈɑːdiːθ (was hˈædɪθ) |
+| Asr | Ahsir | ˈɑːsɪɹ (was ˈæsɚ, "ass-er") |
+
+Not checked by ear; re-listen and adjust the respelling if one still sounds off.
+
 ## Left out
 
 The "Use precise GPS" button (it needs a browser permission prompt), the temperature unit, calculation-method dropdown and Ramadan-start dropdown (shown in the sheet, not changed), and the footer credit.

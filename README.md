@@ -70,6 +70,7 @@ bun scripts/render.ts video --edit todomvc --audio out/audio-todomvc/mix.wav --o
 | `excalidraw` | [Excalidraw](https://excalidraw.com): pick a shape, drag it out, label it, then join a rectangle, a diamond and an ellipse with arrows. | `bun projects/excalidraw/capture.ts` (a recorded clip, real drags and typing) | 0:48 |
 | `hoppscotch` | [Hoppscotch](https://hoppscotch.io): add a query parameter to a request, send it, and read the echo of it in the real response; then a second parameter. | `bun projects/hoppscotch/capture.ts` (a recorded clip, two live requests) | 0:38 |
 | `openstreetmap` | [OpenStreetMap](https://www.openstreetmap.org): search a city, watch the map fly to it, zoom down to the streets. | `bun projects/openstreetmap/capture.ts` (a recorded clip, live map tiles) | 0:34 |
+| `qiyami` | [Qiyami](https://www.qiyami.com): a prayer-time and last-third-of-the-night calculator; the dashboard, then the settings sheet (Asr method, city override). | `bun projects/qiyami/capture.ts` (a recorded clip, live site) | 0:47 |
 
 `todomvc` and `vite` are the short worked examples of the two ways to film: a frame-by-frame recording of the app's own motion, and still plates the renderer moves over. The other three are fuller recorded sessions (drawing on a canvas, a live network request, a live map). All five film public open-source sites, so they re-record anywhere with a network connection. Point `BASE_URL` at a local or self-hosted build to film that instead.
 

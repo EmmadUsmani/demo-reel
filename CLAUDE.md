@@ -15,4 +15,4 @@ Rules that are easy to break:
 - A render you didn't look at is unverified. Open every still, sheet and contact sheet you produce.
 - No music. Narration is Kokoro `af_heart`; a line that overruns its beat means the line gets shorter or the beat gets longer, never `--force`.
 - Never commit footage plates, renders or secrets; only `projects/*/footage/manifest.json`.
-- `bun run typecheck` before committing.
+- `bun run typecheck` and `bun run test` before committing; `bun run test:e2e` too when you change the player (`app/src/player/`, `scripts/build.ts`).

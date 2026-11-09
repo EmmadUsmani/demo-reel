@@ -127,6 +127,7 @@ Then check the file itself, not the app:
 
 - **Commit:** the project directory (`capture.ts`, `timeline.ts`, `scenes/`, `footage/manifest.json`, `treatment.md`) and a README line for the new edit (how to capture and render it, and its length). Never commit plates, renders, fonts you aren't licensed to redistribute, or secrets: `.gitignore` covers the usual ones.
 - **The MP4** goes wherever the person asked; by default it's `out/<edit>.mp4`.
+- **The HTML player**, when asked for one (a video that plays in a page, with narration and captions switchable): `bun scripts/build.ts --edit <name>` writes a static folder, `out/web-<name>/`. See `docs/ENGINE.md`, *The HTML player*.
 - **The report** names:
   - the file and its length;
   - the edit's beats;

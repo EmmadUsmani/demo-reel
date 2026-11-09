@@ -13,5 +13,5 @@
     "resolveJsonModule": true,
     "paths": { "@engine/*": ["./app/src/engine/*"] }
   },
-  "include": ["app/src", "projects", "scripts", "capture"]
+  "include": ["app/src", "projects", "scripts", "capture", "e2e"]
 }

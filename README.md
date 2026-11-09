@@ -34,8 +34,11 @@ projects/<name>/        one video, and only that video's files
   treatment.md          the story, honesty notes and capture needs
 app/src/engine/         shared: timeline, window/camera/cursor, drawing, theme
 app/src/scenes/         shared: the reusable title, chapter and end cards
+app/src/player/         shared: the HTML player (app/player.html), which plays an edit in a browser
 capture/                shared: the capture toolkit (browser launch, virtual clock, recorder, peek)
-scripts/                shared: render.ts (stills, sheets, motion check, MP4) and audio.ts (narration + sound)
+scripts/                shared: render.ts (stills, sheets, motion check, MP4), audio.ts (narration + sound),
+                        build.ts (the HTML player for one edit)
+e2e/                    browser tests of the built player (bun run test:e2e)
 docs/                   the workflow, house style and engine guides
 out/                    renders, stills and contact sheets (gitignored)
 ```
@@ -54,6 +57,14 @@ bun projects/todomvc/capture.ts                 # films todomvc.com's React app 
 bunx vite                                        # preview: http://localhost:5180/?edit=todomvc
 bun scripts/audio.ts --edit todomvc              # narration + sound effects → out/audio-todomvc/mix.wav
 bun scripts/render.ts video --edit todomvc --audio out/audio-todomvc/mix.wav --out out/todomvc.mp4
+bun scripts/build.ts --edit todomvc              # the HTML player: a static folder, out/web-todomvc/
+```
+
+## Tests
+
+```sh
+bun run test        # unit tests (bun test): the player's clock, project helpers
+bun run test:e2e    # the built player in headless Chrome; needs the edit's footage and audio (E2E_EDIT=<name>, default news-digest)
 ```
 
 ## Troubleshooting

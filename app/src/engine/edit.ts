@@ -4,7 +4,14 @@ import type { TimelineEntry } from './engine';
 import type { Theme } from './palette';
 import type { SceneClass } from './scene';
 
-export type Edit = { timeline: () => TimelineEntry[]; theme?: Theme };
+export type Edit = {
+  timeline: () => TimelineEntry[];
+  theme?: Theme;
+  /** What the HTML player calls the video (its page title); the project's name when omitted. */
+  title?: string;
+  /** The frame the player shows before the first play: `at` seconds into the entry `scene`. */
+  poster?: { scene: string; at: number };
+};
 
 type Loaders = Record<string, () => Promise<{ default: SceneClass }>>;
 type Options = { dur?: number; overlap?: number; params?: Record<string, any> };

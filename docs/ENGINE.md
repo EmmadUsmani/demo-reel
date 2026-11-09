@@ -141,6 +141,24 @@ bun scripts/render.ts video --edit todomvc --audio out/audio-todomvc/mix.wav --o
 - **Check without listening:** `sheet.png` shows both stems against time with the scene windows, every cue and every line marked; measure the balance with `ffmpeg -i out/audio-<edit>/vo.wav -af ebur128 -f null -` (and the same for `sfx.wav`); after muxing, decode the MP4's audio and cross-correlate it with `mix.wav` around a click: the lag must be 0.
 - On an overrun, Bun 1.4 may print a crash report as `audio.ts` exits after onnxruntime has loaded. The overrun message above it is the real result.
 
+## The HTML player
+
+The same engine plays an edit in a browser: `app/player.html` draws every frame live (the frames the MP4 is made of) while the soundtrack plays alongside, and the soundtrack keeps the time, so picture and sound can't drift apart.
+
+```sh
+bun scripts/audio.ts --edit news-digest --speed 1.1   # writes mix.wav, effects.wav and captions.json for the player too
+bun scripts/build.ts --edit news-digest               # → out/web-news-digest/: index.html, assets/, footage/, audio/
+bunx vite preview --outDir $PWD/out/web-news-digest --port 5190
+```
+
+- **A built player is one static folder** that works from any path (relative URLs): only that edit's code (`virtual:edits` in `vite.config.ts`), the plates its manifest names, and the soundtrack as AAC. On the dev server, `http://localhost:5180/player.html?edit=<name>` plays the same page with `audio.ts`'s WAVs.
+- **Sound:** two tracks, `mix` and `effects` (the effects alone, not ducked under a voice), so the narration can be switched off. Without a soundtrack the player plays silently on the wall clock; if the browser pauses the sound (media keys, headphones), the video pauses with it.
+- **Captions** come from `captions.json`, each line timed to its speech. A line's on-screen text is its `caption` (`Line.caption`, the cards' `caption` param), so respellings written for Kokoro ("Reddis", "A.P.I.") read as the words are written; without one it is the spoken `text`.
+- **The poster**, the frame shown before the first play, is `Edit.poster` (`{ scene, at }`); `Edit.title` names the page.
+- **Keys:** space or `k` play/pause, ←/→ ±5 s (shift: one frame), `n` narration, `c` captions, `m` mute, `f` full screen. URL: `?t=<s>`, `?captions=1`, `?narration=0`.
+- **Size:** a slide-led edit is small (news-digest: about 19 MB, most of it plates and sound). Edits built on recorded clips ship every PNG frame and are hundreds of MB: fine on your own host, too big for most others until clips are encoded as video.
+- **Tests:** `app/src/player/clock.test.ts` (the clock, in `bun run test`) and `e2e/player.e2e.ts` (the built player in headless Chrome, `bun run test:e2e`).
+
 ## Toolbox
 
 - `util.ts`: `clamp, lerp, remap, smoothstep, ease.*` (incl. `spring`, `outBack`), `prog(t, a, b, ease)`, `keys(t, [[t, v, ease], ...])`, `mulberry32`, `frameIdx`.

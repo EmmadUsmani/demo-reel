@@ -111,3 +111,25 @@ export const SCRIPT: Record<string, string> = {
   // ---------------------------------------------------------------- end
   end: 'One V.M., one agent, one subscription, and a steering file. That’s the factory behind News Digest.',
 };
+
+/** Respellings back to how the words are written, for the script as it reads on screen. */
+const WRITTEN: [RegExp, string][] = [
+  [/steering dot M\.D\./g, 'STEERING.md'],
+  [/exe dot dev/g, 'exe.dev'],
+  [/\bx A\.I\./g, 'xAI'],
+  [/Nest J\.S\./g, 'NestJS'],
+  [/Bull M\.Q\./g, 'BullMQ'],
+  [/P\.N\.P\.M\./g, 'pnpm'],
+  [/\bReddis\b/g, 'Redis'],
+  [/\boh-embed\b/g, 'oEmbed'],
+  [/\bsystem D\b/g, 'systemd'],
+];
+
+/** A line as captions and speaker notes show it: "A Nest J.S. A.P.I." reads "A NestJS API". */
+export function written(spoken: string) {
+  let s = spoken;
+  for (const [from, to] of WRITTEN) s = s.replace(from, to);
+  // the rest are acronyms spelled out letter by letter; one that ended a sentence keeps its full stop
+  return s.replace(/\b(?:[A-Z]\.){2,}/g, (dotted: string, at: number) =>
+    dotted.replaceAll('.', '') + (/^(\s+[A-Z]|$)/.test(s.slice(at + dotted.length)) ? '.' : ''));
+}

@@ -6,7 +6,7 @@ import { C, font, shadow, withAlpha } from '@engine/palette';
 import { Scene, W, type Cue, type Line } from '@engine/scene';
 import type { Cam } from '@engine/slide';
 import { clamp, ease, lerp, prog } from '@engine/util';
-import { SCRIPT } from './script';
+import { SCRIPT, written } from './script';
 import VO from './vo-lengths.json';
 
 export type G = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
@@ -57,7 +57,7 @@ export abstract class Narrated extends Scene {
   /** A point `k` (0..1) through line `id`'s beat. */
   protected at(id: string, k: number) { return lerp(this.T(id), this.E(id), k); }
   duration() { return this.total; }
-  narration(): Line[] { return this.ids.map((id) => ({ id, at: this.T(id) + 0.05, until: this.E(id), text: SCRIPT[id]! })); }
+  narration(): Line[] { return this.ids.map((id) => ({ id, at: this.T(id) + 0.05, until: this.E(id), text: SCRIPT[id]!, caption: written(SCRIPT[id]!) })); }
 }
 
 /** A whoosh per move between slide camera keys, by how the zoom changes. */

@@ -5,7 +5,7 @@ import monoMedium from '@fontsource/jetbrains-mono/files/jetbrains-mono-latin-50
 import monoBold from '@fontsource/jetbrains-mono/files/jetbrains-mono-latin-700-normal.woff2?url';
 import { entries } from '@engine/edit';
 import type { Edit } from '@engine/edit';
-import { SCRIPT } from './script';
+import { SCRIPT, written } from './script';
 import VO from './vo-lengths.json';
 
 const E = entries(import.meta.glob('./scenes/*.ts'));
@@ -22,6 +22,7 @@ const SCENES = () => [
       subtitle: 'a daily news briefing',
       kicker: 'Built and run by an agent',
       line: SCRIPT.title,
+      caption: written(SCRIPT.title!),
       dur: cardDur('title', 2.6),
       cards: [
         { footage: 'news-digest', shot: 'admin-overview', key: 'screen', pad: 0 },
@@ -56,6 +57,7 @@ const SCENES = () => [
       subtitle: 'built by an agent factory',
       chips: ['Codex, around the clock', '$100 a month', '~200 commits a day', 'Steered, not hand-written'],
       line: SCRIPT.end,
+      caption: written(SCRIPT.end!),
       dur: cardDur('end', 2.0),
       card: { footage: 'news-digest', shot: 'reader', key: 'screen', pad: 0 },
     },
@@ -64,6 +66,8 @@ const SCENES = () => [
 
 export default {
   timeline: SCENES,
+  title: 'News Digest: the agent factory',
+  poster: { scene: 'title', at: 3.3 },
   theme: {
     fontFiles: [
       ['JetBrains Mono', monoRegular, 400],

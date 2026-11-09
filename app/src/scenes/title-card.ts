@@ -5,6 +5,7 @@
 //     subtitle?: string,            one line of what it is
 //     kicker?: string,              a chip under it ("Open source", "Now live", "Coming soon")
 //     line: string,                 the narration
+//     caption?: string,             the narration as it reads on screen, when it is respelled
 //     cards?: CardSpec[],           polaroids, see cards.ts
 //     dur?: number                  seconds (default 5)
 //   }
@@ -30,7 +31,7 @@ export default class TitleCard extends Scene {
 
   narration(): Line[] {
     const line: string | undefined = this.ctx.params.line;
-    return line ? [{ id: 'title', at: 0.6, until: this.exit + 0.5, text: line }] : [];
+    return line ? [{ id: 'title', at: 0.6, until: this.exit + 0.5, text: line, caption: this.ctx.params.caption }] : [];
   }
 
   cues(): Cue[] {

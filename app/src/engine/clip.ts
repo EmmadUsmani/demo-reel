@@ -2,7 +2,7 @@
 // was, and when it clicked or typed. A scene plans its playback as segments — play a stretch of the
 // recording, hold a frame — so a beat can be held for its narration without re-recording, and the
 // sounds and lines a scene declares anchor to the clip's own named marks.
-import type { Footage } from './assets';
+import { footageUrl, type Footage } from './assets';
 
 export type ClipFrame = { file: string; x: number; y: number; down: boolean; url?: string; key?: string; wheel?: number };
 export type Clip = {
@@ -158,7 +158,7 @@ export class ClipPlayer {
 
   url(t: number) { return this.urls[this.frameAt(t)] ?? ''; }
 
-  private frameUrl(i: number) { return `/footage/${this.footage.name}/${this.clip.dir}/${this.clip.frames[i]!.file}`; }
+  private frameUrl(i: number) { return footageUrl(this.footage.name, `${this.clip.dir}/${this.clip.frames[i]!.file}`); }
 
   /** Decode the frames scene time t needs (and the next one), before the frame is drawn. */
   async prepare(t: number) {

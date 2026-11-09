@@ -3,7 +3,10 @@
 // the scenes declare (Scene.narration() and Scene.cues()), so every sound sits on its motion.
 //   bun scripts/audio.ts [--edit <name>] [--voice af_heart] [--speed 1] [--out out/audio] [--force]
 // Writes <out>/mix.wav (48 kHz stereo, -16 LUFS), the vo.wav and sfx.wav stems, and sheet.png
-// (the stems against time, with every cue and line marked) for checking without listening.
+// (the stems against time, with every cue and line marked) for checking without listening. For the
+// HTML player (scripts/build.ts) it also writes effects.wav (the effects alone at the mix's gain, not
+// ducked: the soundtrack with the narration off) and captions.json (each line's on-screen text, timed
+// to its speech).
 // Refuses to mix when a narration line overruns its beat, unless --force.
 import { KokoroTTS } from 'kokoro-js';
 import { chromium } from 'playwright-core';
@@ -23,7 +26,7 @@ const RATE = 48000;
 const TARGET_LUFS = -16;
 
 type Cue = { kind: string; t: number; dur?: number; pan?: number; gain?: number; pitch?: number; scene: string };
-type Line = { id: string; at: number; until: number; text: string; scene: string };
+type Line = { id: string; at: number; until: number; text: string; caption?: string; scene: string };
 
 // ------------------------------------------------------------------ what the app declares
 
@@ -259,6 +262,7 @@ const speaking = new Uint8Array(N);
 for (const { line, speech } of clips) for (let n = Math.round(line.at * RATE); n < Math.min(N, Math.round((line.at + speech) * RATE)); n++) speaking[n] = 1;
 for (let n = 0; n < N; n++) { env += (speaking[n]! - env) * (speaking[n]! ? attack : release); duck[n] = 1 - 0.45 * env; }
 
+const effectsL = L.slice(), effectsR = R.slice();
 const mixL = new Float32Array(N), mixR = new Float32Array(N);
 for (let n = 0; n < N; n++) { mixL[n] = vo[n]! + L[n]! * duck[n]!; mixR[n] = vo[n]! + R[n]! * duck[n]!; }
 
@@ -275,10 +279,14 @@ const before = await lufs(probe);
 rmSync(probe);
 const gain = 10 ** ((TARGET_LUFS - before.integrated) / 20);
 limit([mixL, mixR], gain, 10 ** (-1.5 / 20));
+limit([effectsL, effectsR], gain, 10 ** (-1.5 / 20));
 
 await Bun.write(path.join(OUT, 'mix.wav'), writeWav([mixL, mixR], RATE));
 await Bun.write(path.join(OUT, 'vo.wav'), writeWav([vo], RATE));
 await Bun.write(path.join(OUT, 'sfx.wav'), writeWav([L, R], RATE));
+await Bun.write(path.join(OUT, 'effects.wav'), writeWav([effectsL, effectsR], RATE));
+const captions = clips.map(({ line, speech }) => ({ id: line.id, scene: line.scene, at: line.at, end: line.at + speech, text: line.caption ?? line.text }));
+await Bun.write(path.join(OUT, 'captions.json'), JSON.stringify(captions, null, 1));
 const after = await lufs(path.join(OUT, 'mix.wav'));
 console.log(`mix: ${duration.toFixed(2)}s, ${after.integrated.toFixed(1)} LUFS integrated, true peak ${after.truePeak.toFixed(1)} dBFS  (gain ${(20 * Math.log10(gain)).toFixed(1)} dB)`);
 await sheet();

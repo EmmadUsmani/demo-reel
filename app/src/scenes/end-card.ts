@@ -6,6 +6,7 @@
 //     pill?: string,                a status pill above the name ("Coming soon", "Beta")
 //     chips?: string[],             3–4 short phrases
 //     line: string,                 the narration
+//     caption?: string,             the narration as it reads on screen, when it is respelled
 //     card?: CardSpec,              see cards.ts
 //     dur?: number                  seconds (default 5.4)
 //   }
@@ -27,7 +28,7 @@ export default class EndCard extends Scene {
 
   narration(): Line[] {
     const line: string | undefined = this.ctx.params.line;
-    return line ? [{ id: 'end', at: 0.5, until: this.dur - 0.4, text: line }] : [];
+    return line ? [{ id: 'end', at: 0.5, until: this.dur - 0.4, text: line, caption: this.ctx.params.caption }] : [];
   }
 
   cues(): Cue[] {

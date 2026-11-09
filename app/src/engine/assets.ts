@@ -45,6 +45,13 @@ async function bitmap(url: string) {
   return createImageBitmap(await response.blob());
 }
 
+/**
+ * Where a project's footage is served: relative to the page, so the same code works from the dev
+ * server (vite.config.ts maps footage/<name>/ to projects/<name>/footage/) and from a built player
+ * folder at any path (scripts/build.ts copies it there).
+ */
+export const footageUrl = (name: string, file = '') => `footage/${name}${file ? `/${file}` : ''}`;
+
 const cache = new Map<string, Promise<Footage>>();
 
 export function loadFootage(name: string): Promise<Footage> {
@@ -53,7 +60,7 @@ export function loadFootage(name: string): Promise<Footage> {
 }
 
 async function fetchFootage(name: string): Promise<Footage> {
-  const base = `/footage/${name}`;
+  const base = footageUrl(name);
   const response = await fetch(`${base}/manifest.json`);
   if (!response.ok) throw new Error(`${base}/manifest.json: HTTP ${response.status} (run bun capture/${name}.ts)`);
   const manifest = await response.json();

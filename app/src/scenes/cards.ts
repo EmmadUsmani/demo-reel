@@ -1,7 +1,7 @@
 // Polaroid cards cut from real footage, for the title, chapter and end cards: an element out of a
 // shot (by its captured box), or out of one frame of a recorded clip (by a mark's box), or the whole
 // plate. Each card keeps its own decoded bitmap, so it never depends on the clip frame cache.
-import { loadFootage, type Box } from '../engine/assets';
+import { footageUrl, loadFootage, type Box } from '../engine/assets';
 
 /**
  * Where a card comes from. `shot`, or `clip` plus `at` (a mark name or frame index, default the
@@ -35,7 +35,7 @@ export async function loadCard(spec: CardSpec): Promise<Card> {
   const mark = typeof spec.at === 'string' ? clip.marks[spec.at] : undefined;
   if (typeof spec.at === 'string' && !mark) throw new Error(`clip '${spec.clip}' has no mark '${spec.at}'`);
   const index = mark ? mark.frame : Math.max(0, Math.min(clip.frames.length - 1, typeof spec.at === 'number' ? spec.at : 0));
-  const response = await fetch(`/footage/${spec.footage}/${clip.dir}/${clip.frames[index]!.file}`);
+  const response = await fetch(footageUrl(spec.footage, `${clip.dir}/${clip.frames[index]!.file}`));
   if (!response.ok) throw new Error(`clip '${spec.clip}' frame ${index}: HTTP ${response.status}`);
   const image = await createImageBitmap(await response.blob());
   // a mark's boxes are document px; the frame shows the page at the scroll it had then

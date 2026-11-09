@@ -61,4 +61,12 @@ export type Cue = {
  * A narration line: spoken from `at`, it must have finished by `until` (both scene-local), or
  * `scripts/audio.ts` refuses to mix and says by how much it overruns.
  */
-export type Line = { id: string; at: number; until: number; text: string };
+export type Line = {
+  id: string;
+  at: number;
+  until: number;
+  /** What the narrator says, written for the ear (respellings, numbers in words). */
+  text: string;
+  /** The same line as it should read on screen (captions, speaker notes), when it differs from `text`. */
+  caption?: string;
+};

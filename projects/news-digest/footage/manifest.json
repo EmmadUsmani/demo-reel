@@ -1,0 +1,198 @@
+{
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "dpr": 2,
+  "capturedAt": "2026-11-09T18:02:56.447Z",
+  "shots": {
+    "reader": {
+      "file": "reader.png",
+      "w": 1440,
+      "h": 2200,
+      "scrollY": 0,
+      "boxes": {
+        "screen": {
+          "x": 0,
+          "y": 0,
+          "w": 1440,
+          "h": 900
+        }
+      }
+    },
+    "admin-overview": {
+      "file": "admin-overview.png",
+      "w": 1440,
+      "h": 900,
+      "scrollY": 0,
+      "boxes": {
+        "screen": {
+          "x": 0,
+          "y": 0,
+          "w": 1440,
+          "h": 900
+        }
+      }
+    },
+    "admin-spend": {
+      "file": "admin-spend.png",
+      "w": 1440,
+      "h": 1500,
+      "scrollY": 0,
+      "boxes": {
+        "screen": {
+          "x": 0,
+          "y": 0,
+          "w": 1440,
+          "h": 900
+        }
+      }
+    },
+    "grafana-agent": {
+      "file": "grafana-agent.png",
+      "w": 1440,
+      "h": 1500,
+      "scrollY": 0,
+      "boxes": {
+        "screen": {
+          "x": 0,
+          "y": 0,
+          "w": 1440,
+          "h": 900
+        }
+      }
+    },
+    "grafana-product": {
+      "file": "grafana-product.png",
+      "w": 1440,
+      "h": 1300,
+      "scrollY": 0,
+      "boxes": {
+        "screen": {
+          "x": 0,
+          "y": 0,
+          "w": 1440,
+          "h": 900
+        }
+      }
+    },
+    "grafana-jobs": {
+      "file": "grafana-jobs.png",
+      "w": 1440,
+      "h": 900,
+      "scrollY": 0,
+      "boxes": {
+        "screen": {
+          "x": 0,
+          "y": 0,
+          "w": 1440,
+          "h": 900
+        }
+      }
+    },
+    "logs": {
+      "file": "logs.png",
+      "w": 1440,
+      "h": 900,
+      "scrollY": 0,
+      "boxes": {
+        "screen": {
+          "x": 0,
+          "y": 0,
+          "w": 1440,
+          "h": 900
+        }
+      }
+    },
+    "gh-commits": {
+      "file": "gh-commits.png",
+      "w": 1440,
+      "h": 2600,
+      "scrollY": 0,
+      "boxes": {
+        "list": {
+          "x": 80,
+          "y": 301,
+          "w": 1280,
+          "h": 2369
+        },
+        "first": {
+          "x": 122,
+          "y": 339,
+          "w": 1237,
+          "h": 69
+        },
+        "group": {
+          "x": 121,
+          "y": 301,
+          "w": 1239,
+          "h": 29
+        }
+      }
+    },
+    "gh-order": {
+      "file": "gh-order.png",
+      "w": 1440,
+      "h": 900,
+      "scrollY": 425,
+      "boxes": {
+        "heading": {
+          "x": 374.5,
+          "y": 574.6,
+          "w": 1012,
+          "h": 38.2
+        },
+        "list": {
+          "x": 374.5,
+          "y": 692.8,
+          "w": 1012,
+          "h": 208
+        },
+        "intro": {
+          "x": 374.5,
+          "y": 628.8,
+          "w": 1012,
+          "h": 48
+        }
+      }
+    },
+    "gh-ack": {
+      "file": "gh-ack.png",
+      "w": 1440,
+      "h": 900,
+      "scrollY": 5751,
+      "boxes": {
+        "ack": {
+          "x": 374.5,
+          "y": 6130.7,
+          "w": 1012,
+          "h": 96
+        },
+        "second": {
+          "x": 374.5,
+          "y": 6242.7,
+          "w": 1012,
+          "h": 72
+        },
+        "heading": {
+          "x": 374.5,
+          "y": 5568.5,
+          "w": 1012,
+          "h": 38.2
+        }
+      }
+    }
+  },
+  "clips": {},
+  "extras": {
+    "wall": {
+      "file": "wall.png",
+      "cols": 12,
+      "rows": 8,
+      "cellW": 360,
+      "cellH": 225,
+      "total": 1053,
+      "desktop": 296
+    }
+  }
+}

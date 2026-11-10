@@ -17,6 +17,13 @@ export type PlayerParams = {
   narration: boolean;
 };
 
+/** A number from a URL value, or undefined when it is empty or not a number (`+'abc'` is NaN, which would reach the clock). */
+function numberOf(value: string | null): number | undefined {
+  if (value === null || value.trim() === '') return undefined;
+  const n = +value;
+  return Number.isNaN(n) ? undefined : n;
+}
+
 /** `search` is location.search, `hash` is location.hash; a hash name wins over the query it stands for. */
 export function parseParams(search: string, hash: string): PlayerParams {
   const params = new URLSearchParams(search);
@@ -24,12 +31,13 @@ export function parseParams(search: string, hash: string): PlayerParams {
   if (name === 'slides') params.set('mode', 'slides');
   else if (/^slide-\d+$/.test(name)) { params.set('mode', 'slides'); params.set('slide', name.slice(6)); }
   else if (name.startsWith('scene-')) params.set('scene', name.slice(6));
+  const slide = numberOf(params.get('slide'));
   return {
     edit: params.get('edit'),
     mode: params.get('mode') === 'slides' ? 'slides' : 'video',
     scene: params.get('scene') || undefined,
-    slide: params.has('slide') ? +params.get('slide')! : undefined,
-    t: params.has('t') ? +params.get('t')! : undefined,
+    slide: slide === undefined ? undefined : Math.floor(slide),
+    t: numberOf(params.get('t')),
     captions: params.get('captions') === '1',
     narration: params.get('narration') !== '0',
   };

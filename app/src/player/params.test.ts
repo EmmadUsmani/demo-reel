@@ -66,10 +66,22 @@ describe('parseParams', () => {
     expect(parseParams('?scene=a%20b&edit=my%2Dedit', '')).toMatchObject({ scene: 'a b', edit: 'my-edit' });
   });
 
-  test('t and slide are numbers; t may be fractional, zero or negative, and an empty value is 0', () => {
+  test('t is a number of seconds: fractional, zero or negative are kept', () => {
     expect(parseParams('?t=0', '').t).toBe(0);
     expect(parseParams('?t=.5', '').t).toBe(0.5);
     expect(parseParams('?t=-3', '').t).toBe(-3);
-    expect(parseParams('?t=', '').t).toBe(0);
+    expect(parseParams('?t=1e2', '').t).toBe(100);
+  });
+
+  test('a t that is empty or not a number is no t (it would otherwise reach the clock as NaN)', () => {
+    for (const t of ['', ' ', 'abc', 'NaN', '12s', '1:30']) expect(parseParams(`?t=${t}`, '').t, t).toBeUndefined();
+  });
+
+  test('a slide is a whole number; a fractional one is rounded down, and nonsense is no slide', () => {
+    expect(parseParams('?slide=3', '').slide).toBe(3);
+    expect(parseParams('?slide=2.9', '').slide).toBe(2);
+    expect(parseParams('?slide=0', '').slide).toBe(0);
+    expect(parseParams('?slide=-2', '').slide).toBe(-2);
+    for (const slide of ['', 'abc', 'NaN', 'three']) expect(parseParams(`?slide=${slide}`, '').slide, slide).toBeUndefined();
   });
 });

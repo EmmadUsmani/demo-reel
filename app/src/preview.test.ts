@@ -19,10 +19,11 @@ describe('parsePreview', () => {
     expect(parsePreview('?only=').only).toBeNull();
   });
 
-  test('?t starts the preview there; 0 and a missing t both start at the beginning (null)', () => {
+  test('?t starts the preview there; a missing or non-numeric t is null (the beginning)', () => {
     expect(parsePreview('?t=12.5').from).toBe(12.5);
     expect(parsePreview('?t=0').from).toBe(0);
     expect(parsePreview('?t=').from).toBeNull();
+    expect(parsePreview('?t=abc').from).toBeNull();
   });
 
   test('?edit names the edit', () => {

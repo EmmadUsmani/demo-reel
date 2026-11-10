@@ -8,18 +8,19 @@ export type PreviewParams = {
   /** ?only=a,b: load just these timeline entries. */
   only: Set<string> | null;
   edit: string | null;
-  /** ?t=: where the preview opens, s. */
+  /** ?t=: where the preview opens, s; null when missing or not a number. */
   from: number | null;
 };
 
 export function parsePreview(search: string): PreviewParams {
   const params = new URLSearchParams(search);
   const only = params.get('only');
+  const from = parseFloat(params.get('t') ?? '');
   return {
     export: params.has('export'),
     only: only ? new Set(only.split(',')) : null,
     edit: params.get('edit'),
-    from: params.get('t') ? parseFloat(params.get('t')!) : null,
+    from: Number.isNaN(from) ? null : from,
   };
 }
 

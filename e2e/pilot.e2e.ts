@@ -148,4 +148,19 @@ describe('the pilot deck as a Claude artifact serves it (sandboxed, no connectio
     await presenter.page.close();
     host.stop();
   }, 240_000);
+
+  test('a hash changed on the open page (the artifact\'s address bar) switches to the view it names', async () => {
+    const host = serveAsArtifact(file);
+    const { page, problems } = await open(server.browser, host.url);
+    expect(await page.evaluate(() => (window as any).__player.root.classList.contains('presenter'))).toBe(false);
+    await page.evaluate(() => { location.hash = 'presenter-3'; });
+    await page.waitForFunction(() => document.querySelector('#player')?.classList.contains('presenter') && (window as any).__player, null, { timeout: 30_000 });
+    await presenterSettled(page);
+    expect((await presenterState(page)).slide).toBe(2);
+    await page.evaluate(() => { location.hash = 'slide-5'; });
+    await page.waitForFunction(() => { const P = (window as any).__player; return P && !P.root.classList.contains('presenter') && P.deck.slide === 4; }, null, { timeout: 30_000 });
+    expect(problems).toEqual([]);
+    await page.close();
+    host.stop();
+  }, 90_000);
 });

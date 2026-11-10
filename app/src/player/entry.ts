@@ -21,6 +21,9 @@ import { Presenter } from './presenter';
 
 const params = parseParams(location.search, location.hash);
 const root = document.getElementById('player')!;
+// A host that passes only a #name (a Claude artifact) changes it on the open page, as an address bar does:
+// start again on the view it names. The page never writes the hash itself, so this can't loop.
+window.addEventListener('hashchange', () => location.reload());
 
 async function boot() {
   const name = params.edit ?? Object.keys(EDITS)[0]!;

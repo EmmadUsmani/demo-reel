@@ -24,7 +24,7 @@ export default class Chapter extends Scene {
 
   duration() { return DUR; }
   stops() { return [DUR - 0.45 - 1 / 60]; }
-  /** At the card's start, so it is on the way to the card's stop even when a crossfade into the next slide moves that stop earlier. */
+  /** The card is one slide: its note goes on that slide. */
   notes(): Note[] { return this.ctx.params.notes ? [{ at: 0, text: this.ctx.params.notes }] : []; }
   async prepare(f: Frame) { await this.player?.prepare(f.lt); }
 

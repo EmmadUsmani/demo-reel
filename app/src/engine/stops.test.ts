@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { FRAME, placeStops } from './stops';
+import { clearWindow, FRAME, placeInScene, placeStops } from './stops';
 
 const timeline = [
   { id: 'a', start: 0, end: 10 },
@@ -70,5 +70,26 @@ describe('placeStops', () => {
 
   test('an empty timeline has no stops', () => {
     expect(placeStops([], new Map())).toEqual([]);
+  });
+});
+
+describe('clearWindow and placeInScene', () => {
+  test('an entry shows alone from the end of its fade-in to the frame before the next starts', () => {
+    expect(clearWindow(timeline, 0)).toEqual({ first: 0, last: 9 - FRAME });
+    expect(clearWindow(timeline, 1)).toEqual({ first: 10, last: 20 - FRAME });
+    expect(clearWindow(timeline, 2)).toEqual({ first: 20, last: 30 - FRAME });
+  });
+
+  test('a scene-local time lands where a stop at that time would', () => {
+    const own = new Map([['a', [3, 9.5]], ['b', [0.2, 5]], ['c', [2]]]);
+    const placed = placeStops(timeline, own).map((s) => s.t);
+    const times = [...own].flatMap(([id, local]) => local.map((s) => placeInScene(timeline, timeline.findIndex((e) => e.id === id), s)));
+    expect(times).toEqual(placed);
+  });
+
+  test('a time inside the window is only moved by the scene start', () => {
+    expect(placeInScene(timeline, 1, 4)).toBe(13);
+    expect(placeInScene(timeline, 1, 0)).toBe(10);
+    expect(placeInScene(timeline, 0, 99)).toBeCloseTo(9 - FRAME);
   });
 });

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { Engine, type TimelineEntry } from './engine';
+import { slideNotes } from './notes';
 import { H, PH, PW, Scene, SCALE, W, type Cue, type Frame, type Line, type Note, type SceneClass } from './scene';
 import { expectCleanLog, fakeContext, snapshot, type FakeContext } from '../testing/fake-canvas';
 import { installFakeOffscreenCanvas } from '../testing/footage';
@@ -315,15 +316,26 @@ describe('cues, narration and stops, in video time', () => {
 
   test('notes move by their scene\'s start, carry its id, and come out sorted', async () => {
     const engine = await engineOf([
-      entry('a', { dur: 4 }, { notes: [{ at: 3, text: 'late' }, { at: 1, text: 'early' }] }),
-      entry('b', { dur: 4, overlap: 1 }, { notes: [{ at: 0.5, text: 'in b' }] }),
+      entry('a', { dur: 4 }, { notes: [{ at: 2.5, text: 'late' }, { at: 1, text: 'early' }] }),
+      entry('b', { dur: 4 }, { notes: [{ at: 0.5, text: 'in b' }] }),
       entry('c', { dur: 2 }),
     ]);
     expect(engine.notes()).toEqual([
       { at: 1, text: 'early', scene: 'a' },
-      { at: 3, text: 'late', scene: 'a' },
-      { at: 3.5, text: 'in b', scene: 'b' },
+      { at: 2.5, text: 'late', scene: 'a' },
+      { at: 4.5, text: 'in b', scene: 'b' },
     ]);
+  });
+
+  test('a note in a crossfade moves with the stop it is timed at, and stays on that slide', async () => {
+    // b fades in over a's last second (3..4): a's stop at 3.5 is placed a frame before b starts, b's at 0.2 where its fade-in ends
+    const engine = await engineOf([
+      entry('a', { dur: 4 }, { stops: [3.5], notes: [{ at: 3.5, text: 'end of a' }] }),
+      entry('b', { dur: 4, overlap: 1 }, { stops: [0.2, 3], notes: [{ at: 0.2, text: 'start of b' }, { at: 3, text: 'rest of b' }] }),
+    ]);
+    const stops = engine.stops().map((s) => s.t);
+    expect(engine.notes().map((n) => n.at)).toEqual(stops);
+    expect(stops.map((_, k) => slideNotes({ authored: engine.notes(), spoken: [] }, stops, 0, k))).toEqual([['end of a'], ['start of b'], ['rest of b']]);
   });
 
   test('a scene that did not load adds no notes', async () => {

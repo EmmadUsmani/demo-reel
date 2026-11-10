@@ -30,7 +30,7 @@ export default class TitleCard extends Scene {
 
   duration() { return this.dur; }
   stops() { return [this.exit - 1 / 60]; }
-  /** At the card's start, so it is on the way to the card's stop even when a crossfade into the next slide moves that stop earlier. */
+  /** The card is one slide: its note goes on that slide. */
   notes(): Note[] { return this.ctx.params.notes ? [{ at: 0, text: this.ctx.params.notes }] : []; }
 
   narration(): Line[] {

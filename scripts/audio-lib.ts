@@ -21,11 +21,13 @@ export type AudioOptions = { edit?: string; out: string; voice: string; speed: n
 export function audioOptions(argv: string[], root: string): AudioOptions {
   const { opt, flag } = parseArgs(argv);
   const edit = opt('edit');
+  const speed = +opt('speed', '1')!;
+  if (!(speed > 0) || !Number.isFinite(speed)) throw new Error(`--speed must be a number above 0, not '${opt('speed')}'`);
   return {
     edit,
     out: path.resolve(opt('out', path.join(root, edit ? `out/audio-${edit}` : 'out/audio'))!),
     voice: opt('voice', 'af_heart')!,
-    speed: +opt('speed', '1')!,
+    speed,
     force: flag('force'),
   };
 }

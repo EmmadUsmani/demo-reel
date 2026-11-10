@@ -30,6 +30,10 @@ describe('audioOptions', () => {
     expect(options).toEqual({ edit: 'x', out: '/somewhere/audio', voice: 'bf_emma', speed: 1.1, force: true });
   });
 
+  test('--speed must be a number above 0, and says what it got', () => {
+    for (const bad of ['fast', '0', '-1', '', 'Infinity']) expect(() => audioOptions(['--speed', bad], ROOT)).toThrow(`--speed must be a number above 0, not '${bad}'`);
+  });
+
   test('a relative --out becomes absolute', () => {
     expect(path.isAbsolute(audioOptions(['--out', 'mine'], ROOT).out)).toBe(true);
   });

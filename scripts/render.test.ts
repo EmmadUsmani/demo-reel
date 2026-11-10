@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import path from 'node:path';
-import { analyzeJumps, frameCount, renderOptions, sheetTimes, stillName, stillTimes, videoArgs } from './render-lib';
+import { analyzeJumps, frameCount, renderOptions, sheetTimes, stillName, stillTimes, videoArgs, videoRange } from './render-lib';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 
@@ -33,6 +33,66 @@ describe('renderOptions', () => {
     expect(renderOptions(['stills', '--scale', '1.6']).scale).toBe(2);
     expect(renderOptions(['stills', '--scale', '0.4']).scale).toBe(1);
     expect(renderOptions(['stills', '--scale', '-3']).scale).toBe(1);
+  });
+});
+
+describe('renderOptions on a bad flag', () => {
+  test('says which flag is not a number, and what was typed', () => {
+    expect(() => renderOptions(['stills', '--scale', 'big'])).toThrow("--scale must be a number, not 'big'");
+    expect(() => renderOptions(['stills', '--shutter', ''])).toThrow("--shutter must be a number, not ''");
+    expect(() => renderOptions(['video', '--fps', 'fast'])).toThrow("--fps must be a number, not 'fast'");
+    expect(() => renderOptions(['video', '--from', 'x'])).toThrow("--from must be a number, not 'x'");
+    expect(() => renderOptions(['jumps', '--to', 'x'])).toThrow("--to must be a number, not 'x'");
+    expect(() => renderOptions(['sheet', '--n', 'many'])).toThrow("--n must be a number, not 'many'");
+  });
+
+  test('--samples is a whole number of at least 1', () => {
+    expect(() => renderOptions(['stills', '--samples', '0'])).toThrow('--samples must be a whole number of 1 or more');
+    expect(() => renderOptions(['stills', '--samples', '2.5'])).toThrow('--samples must be a whole number of 1 or more');
+  });
+
+  test('--t and --times must be lists of numbers', () => {
+    expect(() => renderOptions(['stills', '--t', '1,two,3'])).toThrow("--t must be comma-separated seconds, not '1,two,3'");
+    expect(() => renderOptions(['stills', '--t', '1,,3'])).toThrow('--t must be comma-separated seconds');
+    expect(() => renderOptions(['sheet', '--times', '1,x'])).toThrow("--times must be comma-separated seconds, not '1,x'");
+  });
+
+  test('a video that ends before it starts, or runs at 0 fps, is refused', () => {
+    expect(() => renderOptions(['video', '--from', '5', '--to', '2'])).toThrow('--to (2) must be after --from (5)');
+    expect(() => renderOptions(['video', '--from', '5', '--to', '5'])).toThrow('must be after');
+    expect(() => renderOptions(['video', '--fps', '0'])).toThrow('--fps must be above 0');
+    expect(() => renderOptions(['video', '--fps', '-30'])).toThrow('--fps must be above 0');
+  });
+
+  test('a contact sheet needs at least one frame', () => {
+    expect(() => renderOptions(['sheet', '--n', '0'])).toThrow('--n must be a whole number of 1 or more');
+    expect(() => renderOptions(['sheet', '--n', '1.5'])).toThrow('--n must be a whole number');
+  });
+
+  test('--cols is 1 or more', () => {
+    expect(() => renderOptions(['sheet', '--cols', '0'])).toThrow('--cols must be 1 or more');
+    expect(() => renderOptions(['sheet', '--cols', 'x'])).toThrow("--cols must be a number, not 'x'");
+  });
+
+  test('good flags still pass, and a sheet from --times needs no --n', () => {
+    expect(() => renderOptions(['video', '--from', '1', '--to', '3', '--fps', '30'])).not.toThrow();
+    expect(() => renderOptions(['sheet', '--times', '1,2', '--n', '0'])).not.toThrow();
+  });
+});
+
+describe('videoRange', () => {
+  const opts = (...args: string[]) => (key: string, fallback?: string) => { const i = args.indexOf(`--${key}`); return i >= 0 ? args[i + 1] : fallback; };
+
+  test('is the whole edit at 60 fps by default', () => {
+    expect(videoRange(opts(), 27.5)).toEqual({ from: 0, to: 27.5, fps: 60 });
+  });
+
+  test('--from, --to and --fps override it', () => {
+    expect(videoRange(opts('--from', '2', '--to', '9', '--fps', '30'), 27.5)).toEqual({ from: 2, to: 9, fps: 30 });
+  });
+
+  test('an edit with no length cannot be rendered', () => {
+    expect(() => videoRange(opts(), 0)).toThrow('--to (0) must be after --from (0)');
   });
 });
 
@@ -187,6 +247,12 @@ describe('analyzeJumps', () => {
 });
 
 describe('render.ts on the command line', () => {
+  test('a bad flag fails at once too, naming it', () => {
+    const result = Bun.spawnSync(['bun', 'scripts/render.ts', 'stills', '--t', '1,abc'], { cwd: ROOT, stdout: 'pipe', stderr: 'pipe' });
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stderr.toString()).toContain("--t must be comma-separated seconds, not '1,abc'");
+  });
+
   test('an unknown mode fails at once, before Chrome or Vite is started', () => {
     const started = performance.now();
     const result = Bun.spawnSync(['bun', 'scripts/render.ts', 'movie'], { cwd: ROOT, stdout: 'pipe', stderr: 'pipe' });

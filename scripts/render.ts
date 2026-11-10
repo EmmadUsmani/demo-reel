@@ -10,7 +10,7 @@
 // reload if it is unreachable.
 import type { Page } from 'playwright-core';
 import { openApp } from './lib';
-import { analyzeJumps, frameCount, renderOptions, sheetTimes, stillName, stillTimes, videoArgs } from './render-lib';
+import { analyzeJumps, frameCount, number, renderOptions, sheetTimes, stillName, stillTimes, videoArgs, videoRange } from './render-lib';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 
@@ -98,16 +98,16 @@ try {
     const times = stillTimes(opt('t'));
     console.log((await stills(page, times, opt('out', path.join(ROOT, 'out/stills'))!)).join('\n'));
   } else if (mode === 'sheet') {
-    const from = +opt('from', '0')!, to = +opt('to', '10')!, n = +opt('n', '12')!;
+    const from = number(opt, 'from', '0'), to = number(opt, 'to', '10'), n = number(opt, 'n', '12');
     const timeline: { start: number }[] | undefined = flag('cuts') ? await page.evaluate(() => (window as any).__video.timeline) : undefined;
     const times = sheetTimes({ from, to, n, times: opt('times'), cuts: timeline });
     const out = opt('out', path.join(ROOT, `out/sheets/sheet_${from}-${to}.png`))!;
-    await sheet(page, times, +opt('cols', '4')!, out);
+    await sheet(page, times, number(opt, 'cols', '4'), out);
     console.log(out);
   } else if (mode === 'jumps') {
     // Motion QA for what stills can't show: the mean change between consecutive 60 fps frames
     // (on a 240x135 thumbnail). A pop is a frame that changes far more than its neighbours do.
-    const from = +opt('from', '0')!, to = +opt('to', '10')!;
+    const from = number(opt, 'from', '0'), to = number(opt, 'to', '10');
     const diffs: number[] = await page.evaluate(async ({ from, to }) => {
       const V = (window as any).__video;
       const thumb = new OffscreenCanvas(240, 135).getContext('2d', { willReadFrequently: true })!;
@@ -130,7 +130,8 @@ try {
     console.log(analyzeJumps(diffs, from).join('\n'));
   } else if (mode === 'video') {
     const duration: number = await page.evaluate(() => (window as any).__video.duration);
-    await video(page, +opt('from', '0')!, +opt('to', String(duration))!, +opt('fps', '60')!, path.resolve(opt('out', path.join(ROOT, `out/${opt('edit') ?? 'video'}.mp4`))!));
+    const { from, to, fps } = videoRange(opt, duration);
+    await video(page, from, to, fps, path.resolve(opt('out', path.join(ROOT, `out/${opt('edit') ?? 'video'}.mp4`))!));
   }
   if (logs.length) console.error('BROWSER LOG:\n' + logs.slice(0, 40).join('\n'));
 } finally {

@@ -64,8 +64,8 @@ export const requested: string[] = [];
 async function fakeFetch(url: string | URL | Request) {
   const [, name, file] = /^footage\/([^/]+)\/(.+)$/.exec(String(url)) ?? [];
   if (!name || !file) return { ok: false, status: 404 };
-  if (file === 'manifest.json') return { ok: true, status: 200, json: async () => manifestOf(name) };
   requested.push(String(url));
+  if (file === 'manifest.json') return { ok: true, status: 200, json: async () => manifestOf(name) };
   const size = sizeOf(name, file);
   if (!size) return { ok: false, status: 404 };
   return { ok: true, status: 200, blob: async () => size };

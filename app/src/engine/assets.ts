@@ -29,11 +29,16 @@ export type Footage = {
   images: Record<string, ImageBitmap>;
 };
 
-/** Load the theme's font files (palette.ts FONT_FILES) before the first frame is drawn. */
+/**
+ * Load the theme's font files (palette.ts FONT_FILES) before the first frame is drawn. Fetched as data,
+ * not by url(): a page whose security policy allows fonts only from data (a hosted player) still gets them.
+ */
 export async function loadFonts() {
   await Promise.all(
     FONT_FILES.map(async ([family, url, weight, style = 'normal']) => {
-      const face = new FontFace(family, `url(${url})`, { weight: String(weight), style });
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
+      const face = new FontFace(family, await response.arrayBuffer(), { weight: String(weight), style });
       document.fonts.add(await face.load());
     }),
   );

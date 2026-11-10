@@ -6,6 +6,8 @@
 //   ?scene=<id>     only this scene (an embed): its own range, stops and sound
 //   ?t=<s>          start (and show the poster) at this time
 //   ?captions=1     captions on          ?narration=0   the soundtrack without the voice
+// A host that passes only a #name to the page (a Claude artifact) can use #slides, #slide-<n> and
+// #scene-<id> instead.
 import './player.css';
 import { loadFonts } from '../engine/assets';
 import { Engine } from '../engine/engine';
@@ -14,6 +16,10 @@ import { EDITS } from '../timeline';
 import { Player } from './player';
 
 const params = new URLSearchParams(location.search);
+const hash = location.hash.slice(1);
+if (hash === 'slides') params.set('mode', 'slides');
+else if (/^slide-\d+$/.test(hash)) { params.set('mode', 'slides'); params.set('slide', hash.slice(6)); }
+else if (hash.startsWith('scene-')) params.set('scene', hash.slice(6));
 const root = document.getElementById('player')!;
 
 async function boot() {

@@ -99,15 +99,26 @@ export class Player {
     for (const track of ['mix', 'effects'] as Track[]) {
       const audio = new Audio();
       audio.preload = 'auto';
-      audio.addEventListener('error', () => {
-        console.warn(`no ${track} soundtrack (${audio.src}): ${audio.error?.message ?? 'failed to load'}`);
+      const url = `audio/${this.o.name}/${track}.${AUDIO_EXT}`;
+      audio.addEventListener('error', async () => {
+        // a host that allows media only from blob: URLs (a Claude artifact) still lets the page fetch its
+        // own files: play the track from memory instead (it loads whole before it plays)
+        if (!audio.src.startsWith('blob:')) {
+          try {
+            const response = await fetch(url);
+            if (response.ok) { audio.src = URL.createObjectURL(await response.blob()); return; }
+          } catch { /* no way to it: play silent */ }
+        }
+        console.warn(`no ${track} soundtrack (${url}): ${audio.error?.message ?? 'failed to load'}`);
         delete this.tracks[track];
         this.clockReset();
         this.sync();
       });
+      // a track that became playable late (fetched as a blob) starts if the video is already playing
+      audio.addEventListener('canplay', () => { if (this.playing && audio === this.track() && audio.paused) this.sync(); });
       // paused from outside (media keys, headphones unplugged, the browser): the video pauses with it
       audio.addEventListener('pause', () => { if (this.playing && audio === this.track() && !audio.ended) this.pause(); });
-      audio.src = `audio/${this.o.name}/${track}.${AUDIO_EXT}`;
+      audio.src = url;
       this.tracks[track] = audio;
     }
   }
@@ -170,8 +181,10 @@ export class Player {
       if (Math.abs(audio.currentTime - this.t) > 0.05) audio.currentTime = this.t;
       if (audio.paused) {
         audio.play().catch((error: DOMException) => {
-          if (error.name === 'AbortError') return; // a pause or a switch got there first
-          this.silent = true; // blocked: the wall clock keeps time, and the next play tries again
+          // only the browser's autoplay rules make the video go on silently (until the next play); a
+          // pause got there first (AbortError), or the track is still loading or failed (its events say)
+          if (error.name !== 'NotAllowedError') return;
+          this.silent = true;
           this.clockReset();
           this.ui();
         });
@@ -351,8 +364,9 @@ export class Player {
   }
 
   private fullscreen() {
-    if (document.fullscreenElement) void document.exitFullscreen();
-    else void this.root.requestFullscreen?.();
+    // a host's frame may refuse it
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else this.root.requestFullscreen?.().catch(() => {});
   }
 
   /** Links to this moment and slide, and an iframe that plays the current scene alone. */

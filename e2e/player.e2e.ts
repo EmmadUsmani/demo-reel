@@ -131,3 +131,29 @@ describe('full video', () => {
     await page.close();
   }, 60_000);
 });
+
+describe('hosted where media and fonts must come from data (a Claude artifact)', () => {
+  test('still plays with sound and its fonts, and #slide-<n> opens a slide', async () => {
+    const page = await server.browser.newPage({ viewport: { width: 1280, height: 720 } });
+    // the artifact host's policy, in short: the page's own files by fetch, media and fonts only from data
+    const policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src data: blob:; media-src data: blob:; font-src data:";
+    await page.route(`${server.url}`, async (route) => {
+      const response = await route.fetch();
+      await route.fulfill({ response, headers: { ...response.headers(), 'content-security-policy': policy } });
+    });
+    await page.goto(`${server.url}#slide-4`);
+    await page.waitForFunction(() => (window as any).__player, null, { timeout: 60_000 });
+    expect(await page.evaluate(() => document.fonts.check('600 16px Inter') && document.fonts.check('16px "Instrument Serif"'))).toBe(true);
+    expect(await page.evaluate(() => [(window as any).__player.mode, (window as any).__player.deck.slide])).toEqual(['slides', 3]);
+    await page.keyboard.press('v'); // to video mode, on slide 4's frame
+    await page.keyboard.press(' ');
+    await page.waitForTimeout(3000);
+    const s = await state(page);
+    expect(s.playing).toBe(true);
+    expect(s.heard).toBe('mix');
+    expect(s.audioPaused).toBe(false);
+    expect(await page.evaluate(() => (window as any).__player.tracks.mix.src.startsWith('blob:'))).toBe(true);
+    expect(Math.abs(s.t - s.audioTime!)).toBeLessThan(0.05);
+    await page.close();
+  }, 90_000);
+});

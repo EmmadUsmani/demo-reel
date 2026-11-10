@@ -38,7 +38,7 @@ app/src/player/         shared: the HTML player (app/player.html), which plays a
 capture/                shared: the capture toolkit (browser launch, virtual clock, recorder, peek)
 scripts/                shared: render.ts (stills, sheets, motion check, MP4), audio.ts (narration + sound),
                         build.ts (the HTML player for one edit), slides.ts (static slides: HTML, PDF, PowerPoint)
-e2e/                    browser tests of the built player (bun run test:e2e)
+e2e/                    browser tests: the built player, the preview page, slide exports (bun run test:e2e)
 docs/                   the workflow, house style and engine guides
 out/                    renders, stills and contact sheets (gitignored)
 ```
@@ -64,9 +64,17 @@ bun scripts/slides.ts --edit todomvc             # static slides: out/slides-tod
 ## Tests
 
 ```sh
-bun run test        # unit tests (bun test): the player's clock and deck, stop placement, project helpers
-bun run test:e2e    # the built player and the slide exports in headless Chrome; needs the edit's footage and audio (E2E_EDIT=<name>, default news-digest)
+bun run test        # unit tests (bun test, ~10 s): no browser, no footage needed
+bun run test:e2e    # headless Chrome, ~3 min; needs the edit's footage and audio (E2E_EDIT=<name>, default news-digest)
 ```
+
+- `app/src/engine/`, `app/src/scenes/`: the engine's maths, camera, clips and drawing, and the shared cards, against a recording fake canvas (`app/src/testing/`): every frame is deterministic, finite and balanced.
+- `app/src/player/`, `app/src/preview.test.ts`: the player's URL parameters, keys, share links, captions, clock and deck.
+- `projects/edits.test.ts`, `projects/render.test.ts`: every edit keeps the timeline rules (narration fits its slot and never overlaps, stops sit outside crossfades, plates exist in the manifest) and draws deterministically with stand-in footage (`projects/testing/`). Per-project helpers have their own tests.
+- `scripts/*.test.ts`: argument parsing, the audio mix, captions, limiter and loudness, the build, render flags and encoding, the slide plan and deck exports; real ffmpeg, Chrome, `pdfinfo` and `unzip` where cheap, skipped with a message if missing.
+- `e2e/`: the built player (controls, links, layout, sync, slides), the preview and `?export=1` page, and the static slide exports.
+
+On a Mac, run the browser tests with the display awake (`caffeinate -d -i bun run test:e2e`): with the display asleep Chrome stops drawing and every test times out.
 
 ## Troubleshooting
 

@@ -59,15 +59,22 @@ export function chromeArgs(platform: string = process.platform) {
 export async function openApp({ edit, only, scale = 1, url, headed = false }: { edit?: string; only?: string; scale?: number; url?: string; headed?: boolean } = {}) {
   const server = await ensureServer(url);
   const browser = await chromium.launch({ channel: 'chrome', headless: !headed, args: chromeArgs() });
-  const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
-  const logs: string[] = [];
-  page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') logs.push(`[${m.type()}] ${m.text()}`); });
-  page.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}`));
-  await page.goto(appUrl(server.url, { edit, only, scale }));
-  await page.waitForFunction(() => (window as any).__video?.ready || (window as any).__video?.error, null, { timeout: 180_000 });
-  const error = await page.evaluate(() => (window as any).__video.error);
-  if (error) throw new Error(`app failed to boot:\n${error}\n${logs.join('\n')}`);
-  const errors: string[] = await page.evaluate(() => (window as any).__video.errors);
-  if (errors.length) console.error('SCENE ERRORS:\n' + errors.join('\n'));
-  return { browser, page, logs, stop: server.stop };
+  try {
+    const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
+    const logs: string[] = [];
+    page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') logs.push(`[${m.type()}] ${m.text()}`); });
+    page.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}`));
+    await page.goto(appUrl(server.url, { edit, only, scale }));
+    await page.waitForFunction(() => (window as any).__video?.ready || (window as any).__video?.error, null, { timeout: 180_000 });
+    const error = await page.evaluate(() => (window as any).__video.error);
+    if (error) throw new Error(`app failed to boot:\n${error}\n${logs.join('\n')}`);
+    const errors: string[] = await page.evaluate(() => (window as any).__video.errors);
+    if (errors.length) console.error('SCENE ERRORS:\n' + errors.join('\n'));
+    return { browser, page, logs, stop: server.stop };
+  } catch (failure) {
+    // a failed boot must not leave Chrome and a Vite server running behind the error
+    await browser.close().catch(() => {});
+    server.stop();
+    throw failure;
+  }
 }

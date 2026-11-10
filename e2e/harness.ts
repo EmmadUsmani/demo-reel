@@ -143,8 +143,9 @@ export function buildSingleOf(edit: string) {
 }
 
 /**
- * A Claude artifact's rules at their strictest: a sandboxed frame (an opaque origin), scripts and styles inline,
- * images, media and fonts only from data and blob, and no connections at all.
+ * A Claude artifact's rules, made stricter: a sandboxed frame (an opaque origin), scripts and styles inline,
+ * images, media and fonts only from data and blob, and no connections at all. A real artifact frame lets the
+ * page connect to its own origin and blob:, but never to data:, so fetching an inlined font fails there too.
  */
 export const ARTIFACT_CSP = "sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'";
 

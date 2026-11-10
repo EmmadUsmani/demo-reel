@@ -1,10 +1,15 @@
 import { defineConfig, normalizePath, type Plugin } from 'vite';
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { projectsOf } from './scripts/bundled-projects';
 
 const repoRoot = import.meta.dirname;
 /** Set by scripts/build.ts: build the HTML player for this one edit, with only its project inside. */
 const BUILD_EDIT = process.env.DEMO_REEL_EDIT;
+/** Set by scripts/build.ts with --single: one self-contained HTML file, so no chunks and every asset inlined. */
+const SINGLE = !!process.env.DEMO_REEL_SINGLE;
+/** Set by scripts/build.ts: where to list the projects whose code the build bundled (it ships their footage). */
+const PROJECTS_FILE = process.env.DEMO_REEL_PROJECTS_FILE;
 
 // Each project keeps its captured footage in projects/<name>/footage/, beside the capture script that
 // writes it, not inside the app: serve footage/<name>/... from there without copying or symlinking.
@@ -21,6 +26,19 @@ function footage(): Plugin {
         if (sound) request.url = `${root}/out/audio-${sound[1]}${sound[2] ?? ''}`;
         next();
       });
+    },
+  };
+}
+
+// Write the projects whose modules made it into the bundle, one name per line, for scripts/build.ts.
+function bundledProjects(): Plugin {
+  return {
+    name: 'bundled-projects',
+    apply: 'build',
+    generateBundle(_options, bundle) {
+      if (!PROJECTS_FILE) return;
+      const ids = Object.values(bundle).flatMap((chunk) => (chunk.type === 'chunk' ? chunk.moduleIds : []));
+      writeFileSync(PROJECTS_FILE, projectsOf(ids, repoRoot).join('\n'));
     },
   };
 }
@@ -59,11 +77,16 @@ export default defineConfig({
   publicDir: 'public',
   // a built player is a folder that works from any path: a static host, a sub-directory, an artifact
   base: BUILD_EDIT ? './' : '/',
-  plugins: [footage(), edits()],
+  plugins: [footage(), edits(), bundledProjects()],
   // a built player plays the MP3s scripts/build.ts encodes; the dev server, audio.ts's WAVs
   define: { 'import.meta.env.PLAYER_AUDIO': JSON.stringify(BUILD_EDIT ? 'mp3' : 'wav') },
   // DEMO_REEL_NO_HMR=1: an export must not reload mid-render when a file is saved
   server: { port: 5180, strictPort: false, hmr: process.env.DEMO_REEL_NO_HMR ? false : undefined, fs: { allow: [repoRoot] } },
   resolve: { alias: { '@root': path.resolve(repoRoot), '@engine': path.resolve(repoRoot, 'app/src/engine') } },
-  build: { target: 'esnext', ...(BUILD_EDIT ? { rollupOptions: { input: path.resolve(repoRoot, 'app/player.html') } } : {}) },
+  build: {
+    target: 'esnext',
+    ...(BUILD_EDIT ? { rolldownOptions: { input: path.resolve(repoRoot, 'app/player.html'), ...(SINGLE ? { output: { codeSplitting: false } } : {}) } } : {}),
+    // one file: scenes load with import.meta.glob (lazily), so their chunks fold in; fonts become data: URLs
+    ...(SINGLE ? { assetsInlineLimit: Number.MAX_SAFE_INTEGER, cssCodeSplit: false } : {}),
+  },
 });

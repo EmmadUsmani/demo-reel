@@ -174,6 +174,19 @@ bun scripts/slides.ts --edit news-digest      # → out/slides-news-digest/: ind
 - **Formats:** `index.html` is a deck that needs only its images (←/→, `s` notes, `#n` links) and prints one slide a page; `deck.pdf` is printed from it; `deck.pptx` (pptxgenjs) carries the notes, and Keynote and Google Slides open it. The slides are pictures: their text can't be edited.
 - **Tests:** `scripts/slides-plan.test.ts`; `e2e/export.e2e.ts` runs the script and checks the stills, every narration line landing on one slide, the PDF's pages, the PowerPoint's notes and the HTML deck's paging.
 
+## A single-file player
+
+```sh
+bun scripts/build.ts --edit news-digest --single [--out out/web-news-digest.html]
+```
+
+- **One `.html`, no server:** double-click it (`file://`), host it anywhere, or hand it to a host with strict rules (a Claude artifact). The folder build can't do that: browsers block module scripts and `fetch` from `file://`.
+- **The code** is one inline `<script type="module">` (`codeSplitting: false` folds the lazily loaded scenes in) with the CSS inline and the fonts as `data:` URLs (`vite.config.ts`, `DEMO_REEL_SINGLE`). `--out` without `.html` gets it added.
+- **The data** (every footage file the manifests name, `captions.json`, `mix.mp3`, `effects.mp3`) is embedded as base64 in a `<script type="application/json">`, keyed by the URL the player fetches (`footage/<project>/a.png`). A small shim ahead of the code (`scripts/single-shim.ts`) answers `fetch` for those relative URLs, 404s the other relative ones, and passes absolute URLs on. An `<audio>` given an embedded URL plays it from a blob, so no app code differs from the folder build.
+- **Reused footage:** footage is named by project (`footageUrl(name)`), so a timeline reusing another project's scenes loads that project's footage. Both builds ship the footage of every project whose modules the bundle holds (`vite.config.ts` lists them, `scripts/bundled-projects.ts` decides; only a project with `footage/manifest.json` contributes).
+- **Size:** base64 adds a third. news-digest is about 36 MB, over the 20 MiB a Claude artifact takes (the build warns, and warns again for an edit with clips, whose frames would all be embedded). It plays from `file://` and any host regardless.
+- **Tests:** `scripts/single.test.ts`, `scripts/bundled-projects.test.ts`, `scripts/build.test.ts` (a real build); `e2e/single.e2e.ts` opens the file from `file://` and under an artifact's CSP.
+
 ## Toolbox
 
 - `util.ts`: `clamp, lerp, remap, smoothstep, ease.*` (incl. `spring`, `outBack`), `prog(t, a, b, ease)`, `keys(t, [[t, v, ease], ...])`, `mulberry32`, `frameIdx`.

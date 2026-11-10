@@ -6,6 +6,7 @@ import './player.e2e';
 import './controls.e2e';
 import './links.e2e';
 import './layout.e2e';
+import './preview.e2e';
 import './slides.e2e';
 import './export.e2e';
 

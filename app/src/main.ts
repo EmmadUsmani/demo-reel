@@ -10,20 +10,21 @@ const params = parsePreview(location.search);
 const EXPORT = params.export;
 const EDIT = params.edit ?? Object.keys(EDITS)[0]!;
 const edit = EDITS[EDIT];
-if (!edit) throw new Error(`no edit '${EDIT}' (edits: ${Object.keys(EDITS).join(', ')})`);
-applyTheme(edit.theme);
-const TITLE = edit.title ?? EDIT;
+// an unknown edit is reported by boot(), through window.__video.error, which render.ts waits on
+if (edit) applyTheme(edit.theme);
+const TITLE = edit?.title ?? EDIT;
 document.title = `${EDIT} — demo-reel`;
 const FROM = params.from;
 
 const canvas = document.getElementById('c') as HTMLCanvasElement;
-const engine = new Engine(canvas, edit.timeline);
+const engine = new Engine(canvas, edit?.timeline ?? (() => []));
 
 declare global {
   interface Window { __video: any }
 }
 
 async function boot() {
+  if (!edit) throw new Error(`no edit '${EDIT}' (edits: ${Object.keys(EDITS).join(', ')})`);
   await loadFonts();
   const { only } = params;
   await engine.init(only ? (e) => only.has(e.id) : undefined);

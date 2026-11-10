@@ -109,8 +109,10 @@ export class Player {
       });
       // a track that became playable late (fetched as a blob) starts if the video is already playing
       audio.addEventListener('canplay', () => { if (this.playing && audio === this.track() && audio.paused) this.sync(); });
-      // paused from outside (media keys, headphones unplugged, the browser): the video pauses with it
-      audio.addEventListener('pause', () => { if (this.playing && audio === this.track() && !audio.ended) this.pause(); });
+      // paused from outside (media keys, headphones unplugged, the browser): the video pauses with it. The
+      // event arrives a task after the pause, so one from our own sync() that the video has played on
+      // from since (a double tap of space) finds the audio playing again: not a pause from outside.
+      audio.addEventListener('pause', () => { if (audio.paused && this.playing && audio === this.track() && !audio.ended) this.pause(); });
       audio.src = url;
       this.tracks[track] = audio;
     }

@@ -29,8 +29,8 @@ export type PlayerOptions = {
 type Caption = { at: number; end: number; text: string };
 type Track = 'mix' | 'effects';
 
-/** Built players carry AAC; the dev server plays scripts/audio.ts's WAVs where they are. */
-const AUDIO_EXT = import.meta.env.PLAYER_BUILD ? 'm4a' : 'wav';
+/** Built players carry MP3 (every browser, every host that serves audio); the dev server, audio.ts's WAVs. */
+const AUDIO_EXT = import.meta.env.PLAYER_AUDIO;
 
 const ICON = {
   play: '<svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></svg>',

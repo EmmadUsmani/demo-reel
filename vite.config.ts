@@ -60,8 +60,8 @@ export default defineConfig({
   // a built player is a folder that works from any path: a static host, a sub-directory, an artifact
   base: BUILD_EDIT ? './' : '/',
   plugins: [footage(), edits()],
-  // a built player plays the AAC scripts/build.ts encodes; the dev server, audio.ts's WAVs
-  define: { 'import.meta.env.PLAYER_BUILD': JSON.stringify(Boolean(BUILD_EDIT)) },
+  // a built player plays the MP3s scripts/build.ts encodes; the dev server, audio.ts's WAVs
+  define: { 'import.meta.env.PLAYER_AUDIO': JSON.stringify(BUILD_EDIT ? 'mp3' : 'wav') },
   // DEMO_REEL_NO_HMR=1: an export must not reload mid-render when a file is saved
   server: { port: 5180, strictPort: false, hmr: process.env.DEMO_REEL_NO_HMR ? false : undefined, fs: { allow: [repoRoot] } },
   resolve: { alias: { '@root': path.resolve(repoRoot), '@engine': path.resolve(repoRoot, 'app/src/engine') } },

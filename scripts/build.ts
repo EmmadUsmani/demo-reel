@@ -5,7 +5,8 @@
 // Run scripts/audio.ts for the edit first; without its output the player builds silent. Writes:
 //   index.html, assets/        the player and the edit's code (no other project's)
 //   footage/<name>/            the plates the manifest names (manifest.json and its files)
-//   audio/<name>/              mix.m4a, effects.m4a (AAC) and captions.json from out/audio-<name>/
+//   audio/<name>/              mix.mp3, effects.mp3 (constant bitrate, so seeks land exactly) and
+//                              captions.json, from out/audio-<name>/
 import { cpSync, existsSync, mkdirSync, readdirSync, renameSync, statSync } from 'node:fs';
 import path from 'node:path';
 
@@ -53,7 +54,7 @@ if (existsSync(path.join(AUDIO, 'mix.wav'))) {
   mkdirSync(audioOut, { recursive: true });
   for (const track of ['mix', 'effects']) {
     if (!existsSync(path.join(AUDIO, `${track}.wav`))) { console.warn(`no ${track}.wav: re-run scripts/audio.ts --edit ${EDIT} for it`); continue; }
-    await run(['ffmpeg', '-y', '-v', 'error', '-i', path.join(AUDIO, `${track}.wav`), '-c:a', 'aac', '-b:a', BITRATE, '-movflags', '+faststart', path.join(audioOut, `${track}.m4a`)]);
+    await run(['ffmpeg', '-y', '-v', 'error', '-i', path.join(AUDIO, `${track}.wav`), '-c:a', 'libmp3lame', '-b:a', BITRATE, path.join(audioOut, `${track}.mp3`)]);
   }
   if (existsSync(path.join(AUDIO, 'captions.json'))) cpSync(path.join(AUDIO, 'captions.json'), path.join(audioOut, 'captions.json'));
 } else console.warn(`no soundtrack in ${AUDIO}: the player is silent (run bun scripts/audio.ts --edit ${EDIT} first)`);

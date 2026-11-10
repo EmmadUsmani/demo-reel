@@ -151,7 +151,7 @@ bun scripts/build.ts --edit news-digest               # → out/web-news-digest/
 bunx vite preview --outDir $PWD/out/web-news-digest --port 5190
 ```
 
-- **A built player is one static folder** that works from any path (relative URLs): only that edit's code (`virtual:edits` in `vite.config.ts`), the plates its manifest names, and the soundtrack as AAC. On the dev server, `http://localhost:5180/player.html?edit=<name>` plays the same page with `audio.ts`'s WAVs.
+- **A built player is one static folder** that works from any path (relative URLs): only that edit's code (`virtual:edits` in `vite.config.ts`), the plates its manifest names, and the soundtrack as constant-bitrate MP3 (a format every browser plays and hosts such as Claude artifacts serve). On the dev server, `http://localhost:5180/player.html?edit=<name>` plays the same page with `audio.ts`'s WAVs.
 - **Sound:** two tracks, `mix` and `effects` (the effects alone, not ducked under a voice), so the narration can be switched off. Without a soundtrack the player plays silently on the wall clock; if the browser pauses the sound (media keys, headphones), the video pauses with it.
 - **Captions** come from `captions.json`, each line timed to its speech. A line's on-screen text is its `caption` (`Line.caption`, the cards' `caption` param), so respellings written for Kokoro ("Reddis", "A.P.I.") read as the words are written; without one it is the spoken `text`.
 - **The poster**, the frame shown before the first play, is `Edit.poster` (`{ scene, at }`); `Edit.title` names the page.

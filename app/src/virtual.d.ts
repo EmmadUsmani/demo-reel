@@ -1,6 +1,6 @@
 interface ImportMetaEnv {
-  /** Built by scripts/build.ts (vite.config.ts `define`). */
-  readonly PLAYER_BUILD: boolean;
+  /** The soundtrack's file type: mp3 in a built player, wav on the dev server (vite.config.ts `define`). */
+  readonly PLAYER_AUDIO: 'mp3' | 'wav';
 }
 
 declare module 'virtual:edits' {

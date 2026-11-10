@@ -46,6 +46,7 @@ function setupExport() {
     timeline: engine.timeline.map(({ id, start, end }) => ({ id, start, end })),
     cues: engine.cues(),
     narration: engine.narration(),
+    notes: engine.notes(),
     stops: engine.stops(),
     async still(t: number, samples = 1, shutter = 0.5) { await engine.prepare(t, samples, shutter); engine.render(t, samples, shutter); },
     async png() {

@@ -37,6 +37,11 @@ export abstract class Scene {
   cues(): Cue[] { return []; }
   narration(): Line[] { return []; }
   /**
+   * Speaker notes for a deck, written per slide (see engine/notes.ts). A slide's notes are the notes
+   * timed on the way to it; a slide with none shows the narration said on the way instead.
+   */
+  notes(): Note[] { return []; }
+  /**
    * Where a deck pauses in this scene (scene-local, s): the moments each beat is fully built, a frame
    * before what follows starts to move. None means the scene's last frame (engine/stops.ts).
    */
@@ -80,3 +85,6 @@ export type Line = {
   /** The same line as it should read on screen (captions, speaker notes), when it differs from `text`. */
   caption?: string;
 };
+
+/** A speaker note, written for the presenter: shown from `at` (scene-local, s) like a narration line, but never spoken. */
+export type Note = { at: number; text: string };

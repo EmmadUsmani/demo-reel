@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { Engine, type TimelineEntry } from './engine';
-import { H, PH, PW, Scene, SCALE, W, type Cue, type Frame, type Line, type SceneClass } from './scene';
+import { H, PH, PW, Scene, SCALE, W, type Cue, type Frame, type Line, type Note, type SceneClass } from './scene';
 import { expectCleanLog, fakeContext, snapshot, type FakeContext } from '../testing/fake-canvas';
 import { installFakeOffscreenCanvas } from '../testing/footage';
 
-type Opts = { duration?: number; cues?: Cue[]; narration?: Line[]; stops?: number[]; throwsInRender?: boolean; throwsInInit?: boolean };
+type Opts = { duration?: number; cues?: Cue[]; narration?: Line[]; notes?: Note[]; stops?: number[]; throwsInRender?: boolean; throwsInInit?: boolean };
 type Drawn = { id: string; frame: Frame; g: unknown };
 
 let drawn: Drawn[];
@@ -27,6 +27,7 @@ function entry(id: string, timing: { dur?: number; overlap?: number } = {}, opts
     duration() { return opts.duration; }
     cues() { return opts.cues ?? []; }
     narration() { return opts.narration ?? []; }
+    notes() { return opts.notes ?? []; }
     stops() { return opts.stops ?? []; }
     async prepare(f: Frame) { prepared.push({ id, t: f.t }); }
     render(f: Frame) {
@@ -310,6 +311,25 @@ describe('cues, narration and stops, in video time', () => {
       { id: 'one', at: 0.5, until: 3, text: 'Hello.', scene: 'a' },
       { id: 'two', at: 3.2, until: 5, text: 'World.', caption: 'World!', scene: 'b' },
     ]);
+  });
+
+  test('notes move by their scene\'s start, carry its id, and come out sorted', async () => {
+    const engine = await engineOf([
+      entry('a', { dur: 4 }, { notes: [{ at: 3, text: 'late' }, { at: 1, text: 'early' }] }),
+      entry('b', { dur: 4, overlap: 1 }, { notes: [{ at: 0.5, text: 'in b' }] }),
+      entry('c', { dur: 2 }),
+    ]);
+    expect(engine.notes()).toEqual([
+      { at: 1, text: 'early', scene: 'a' },
+      { at: 3, text: 'late', scene: 'a' },
+      { at: 3.5, text: 'in b', scene: 'b' },
+    ]);
+  });
+
+  test('a scene that did not load adds no notes', async () => {
+    const notes = [{ at: 0.5, text: 'x' }];
+    const engine = await engineOf([entry('a', { dur: 2 }, { notes }), entry('b', { dur: 2 }, { notes })], (e) => e.id === 'b');
+    expect(engine.notes()).toEqual([{ at: 2.5, text: 'x', scene: 'b' }]);
   });
 
   test('stops come from the loaded scenes, placed clear of crossfades', async () => {

@@ -10,6 +10,11 @@ export type Edit = {
   theme?: Theme;
   /** What the HTML player calls the video (its page title); the project's name when omitted. */
   title?: string;
+  /**
+   * A presentation, not a video: the player opens in slides mode with the narration off, plays silently on
+   * the wall clock and asks for no soundtrack. `?mode=video` and the Slides toggle still work.
+   */
+  deck?: boolean;
   /** The frame the player shows before the first play: `at` seconds into the entry `scene`. */
   poster?: { scene: string; at: number };
 };

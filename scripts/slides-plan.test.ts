@@ -63,6 +63,30 @@ describe('plan', () => {
     expect(slides.map((s) => s.notes)).toEqual([['one', 'two'], ['three'], ['four']]);
   });
 
+  test('authored notes replace the narration on the slides they fall on; the others keep their narration', () => {
+    const authored = [{ at: 5, text: 'note for slide 2' }];
+    const slides = plan([shot(4, 'a', 0, 10), shot(8, 'a', 60, 70), shot(12, 'a', 30, 40)], spoken, { authored });
+    expect(slides.map((s) => s.notes)).toEqual([['one', 'two'], ['note for slide 2'], ['four']]);
+  });
+
+  test('authored notes follow the folding of build steps: a folded stop passes its notes to the slide that stands for it', () => {
+    const authored = [{ at: 2, text: 'before the build' }, { at: 5, text: 'on the build' }];
+    const slides = plan([shot(3, 'a', 0, 10), shot(7, 'a', 0, 20), shot(9, 'b', 60, 70)], spoken, { authored });
+    expect(slides.map((s) => [s.t, s.notes])).toEqual([[7, ['before the build', 'on the build']], [9, ['three', 'four']]]);
+  });
+
+  test('authored notes after the last stop go on the last slide, as narration does', () => {
+    expect(plan([shot(5, 'a', 0, 10)], spoken, { authored: [{ at: 50, text: 'closing' }] })[0]!.notes).toEqual(['closing']);
+  });
+
+  test('the same slide gets the same notes here as in the player (engine/notes.ts)', async () => {
+    const { slideNotes } = await import('../app/src/engine/notes');
+    const authored = [{ at: 1, text: 'a' }, { at: 9, text: 'b' }];
+    const shots = [shot(4, 'a', 0, 10), shot(8, 'a', 60, 70), shot(12, 'a', 30, 40)];
+    const stops = shots.map((x) => x.t);
+    expect(plan(shots, spoken, { authored, builds: true }).map((x) => x.notes)).toEqual(stops.map((_, k) => slideNotes({ authored, spoken }, stops, -Infinity, k, true)));
+  });
+
   test('the threshold decides how much change is a new slide', () => {
     const half = [shot(3, 'a', 0, 10), shot(7, 'a', 5, 15)]; // half of the first picture is gone in the next
     expect(plan(half, spoken, { threshold: 0.4 }).map((s) => s.t)).toEqual([3, 7]);

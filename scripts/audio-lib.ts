@@ -289,7 +289,7 @@ export function limit(channels: Float32Array[], gain: number, ceiling: number) {
     let ahead = 0;
     for (let k = n; k < Math.min(N, n + look); k += 8) ahead = Math.max(ahead, peak[k]!);
     const needed = ahead > ceiling ? ceiling / ahead : 1;
-    reduction = needed < reduction ? needed : reduction + (1 - reduction) * rel;
+    reduction = Math.min(needed, reduction + (1 - reduction) * rel); // never release past what this sample needs
     for (const c of channels) c[n] = c[n]! * gain * reduction;
   }
 }

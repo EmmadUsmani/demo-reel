@@ -347,6 +347,12 @@ describe('limit', () => {
     expect(channel.every((v, i) => v === expected[i])).toBe(true);
   });
 
+  test('holds a sustained overload at the ceiling, not a hair over it', () => {
+    const flat = Float32Array.from({ length: 2000 }, () => 2);
+    limit([flat], 1, 1);
+    expect(peak(flat)).toBeLessThanOrEqual(1);
+  });
+
   test('holds every sample under the ceiling, however hot the input', () => {
     const left = sine(RATE, 0.9, 97), right = sine(RATE, 0.7, 61);
     limit([left, right], 6, CEILING);
@@ -377,8 +383,7 @@ describe('limit', () => {
   test('handles a channel shorter than a lookahead window', () => {
     const tiny = Float32Array.of(2, 2, 2);
     limit([tiny], 1, 1);
-    expect(tiny[0]).toBeCloseTo(1, 5);
-    expect(peak(tiny)).toBeLessThan(1.001);
+    expect(peak(tiny)).toBeLessThanOrEqual(1);
   });
 
   test('silence stays silence', () => {

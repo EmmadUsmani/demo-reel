@@ -55,6 +55,9 @@ export async function writePptx(deck: Deck, out: string) {
   await pptx.writeFile({ fileName: path.join(out, 'deck.pptx') });
 }
 
+/** JSON safe to put inside a <script>: no `<` (so no `</script>` or `<!--` in a note can end or change the script) and no raw line separators. */
+const inlineJson = (value: unknown) => JSON.stringify(value).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+
 /** The deck as one page: a slide at a time on screen, all of them (one a page) in print. */
 export function html(deck: Pick<Deck, 'title'> & { slides: Pick<DeckSlide, 'n' | 'file' | 'notes'>[] }) {
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -98,7 +101,7 @@ export function html(deck: Pick<Deck, 'title'> & { slides: Pick<DeckSlide, 'n' |
 </div>
 <div class="print">${deck.slides.map((s) => `<img src="${s.file}" alt="Slide ${s.n}">`).join('')}</div>
 <script>
-  const slides = ${JSON.stringify(deck.slides.map((s) => ({ file: s.file, notes: s.notes })))};
+  const slides = ${inlineJson(deck.slides.map((s) => ({ file: s.file, notes: s.notes })))};
   const $ = (s) => document.querySelector(s);
   const fromHash = () => Math.min(slides.length, Math.max(1, parseInt(location.hash.slice(1)) || 1)) - 1;
   let k = fromHash();

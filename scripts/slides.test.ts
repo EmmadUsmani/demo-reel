@@ -116,6 +116,14 @@ describe('html', () => {
     expect(page).not.toContain('<i>');
   });
 
+  test('notes with quotes, angle brackets and script tags stay data, not markup', () => {
+    const nasty = ['She said "hi" & left', '</script><img src=x onerror=alert(1)>', '<!-- not a comment', '  line separator'];
+    const page = html(deck([nasty]));
+    expect(embedded(page)[0].notes).toEqual(nasty);
+    expect(page.split('</script>')).toHaveLength(2); // the page's own closing tag, and no other
+    expect(page).not.toContain('<img src=x');
+  });
+
   chromeTest('shows the first slide, steps with the arrow keys, and clamps at both ends', async () => {
     const d = deck();
     writeImages(d);
@@ -178,6 +186,20 @@ describe('html', () => {
       expect((await notes()).paragraphs).toEqual(['No narration on this slide.']);
       await page.keyboard.press('s');
       expect((await notes()).hidden).toBe(true);
+    } finally {
+      await page.close();
+    }
+  });
+
+  chromeTest('a note that closes a script tag still shows up as text', async () => {
+    const d = deck([['before </script><b>bold</b> after']]);
+    writeImages(d);
+    await Bun.write(path.join(tmp.dir, 'index.html'), html(d));
+    const page = await chrome!.newPage();
+    try {
+      await page.goto(`file://${path.join(tmp.dir, 'index.html')}`);
+      await page.keyboard.press('s');
+      expect(await page.evaluate(() => document.querySelector('.notes')!.textContent)).toBe('before </script><b>bold</b> after');
     } finally {
       await page.close();
     }

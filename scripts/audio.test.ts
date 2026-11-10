@@ -12,7 +12,7 @@ const peak = (a: Float32Array, from = 0, to = a.length) => { let p = 0; for (let
 /** First and last index where |a| exceeds `level`. */
 const extent = (a: Float32Array, level = 1e-6) => ({ first: a.findIndex((v) => Math.abs(v) > level), last: a.length - 1 - [...a].reverse().findIndex((v) => Math.abs(v) > level) });
 const line = (over: Partial<Line> = {}): Line => ({ id: 'one', at: 1, until: 4, text: 'Hello there.', scene: 'intro', ...over });
-const clip = (over: Partial<Line> = {}, speech = 1.5, samples = new Float32Array(RATE)): Clip => ({ line: line(over), speech, samples });
+const clip = (over: Partial<Line> = {}, speech = 1.5, samples: Float32Array = new Float32Array(RATE)): Clip => ({ line: line(over), speech, samples });
 const sine = (n: number, amp = 1, period = 50) => Float32Array.from({ length: n }, (_, i) => amp * Math.sin((2 * Math.PI * i) / period));
 const cue = (kind: string, t: number, over: Partial<Cue> = {}): Cue => ({ kind, t, scene: 's', ...over });
 
@@ -79,9 +79,19 @@ describe('trimSpeech', () => {
     expect(trimSpeech(padded(500, 1000, 500, 0.011), 1000).speech).toBeCloseTo(0.999, 6);
   });
 
-  test('cannot keep more than there is', () => {
-    const { samples } = trimSpeech(padded(10, 100, 10), 1000);
-    expect(samples.length).toBe(120);
+  test('cannot keep more tail than there is', () => {
+    const { samples } = trimSpeech(padded(500, 100, 10), 1000);
+    expect(samples.length).toBe(40 + 100 + 10); // the lead-in, the speech, and the 10 samples left (not 150)
+  });
+
+  test("always leaves exactly 40 ms before the first word, so a placed clip's speech starts on its line time", () => {
+    const loud = (lead: number) => Float32Array.from({ length: lead + 4800 + 2400 }, (_, i) => (i >= lead && i < lead + 4800 ? 0.5 : 0));
+    for (const lead of [0, 480, 1920, 9600]) { // 0 ms, 10 ms, exactly 40 ms, 200 ms of silence before the speech
+      const { samples, speech } = trimSpeech(loud(lead), RATE);
+      expect(samples.findIndex((v) => v !== 0)).toBe(Math.round(0.04 * RATE));
+      const track = voiceTrack([clip({ at: 1 }, speech, samples)], RATE * 3);
+      expect(track.findIndex((v) => v !== 0)).toBe(RATE);
+    }
   });
 
   test('an all-silent clip has no speech and nothing to keep', () => {

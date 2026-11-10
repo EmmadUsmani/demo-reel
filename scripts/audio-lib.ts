@@ -44,7 +44,11 @@ export function trimSpeech(raw: Float32Array, rate: number) {
   while (first < raw.length && Math.abs(raw[first]!) < 0.01) first++;
   while (last > 0 && Math.abs(raw[last]!) < 0.01) last--;
   if (first >= raw.length) return { samples: new Float32Array(0), speech: 0 }; // nothing but silence
-  const trimmed = raw.subarray(Math.max(0, first - Math.round(0.04 * rate)), Math.min(raw.length, last + Math.round(0.15 * rate)));
+  const lead = Math.round(0.04 * rate), kept = raw.subarray(Math.max(0, first - lead), Math.min(raw.length, last + Math.round(0.15 * rate)));
+  // less than 40 ms of silence before the first word: pad to exactly that, so the speech always starts `lead` into the clip
+  const missing = Math.max(0, lead - first);
+  const trimmed = missing ? new Float32Array(missing + kept.length) : kept;
+  if (missing) trimmed.set(kept, missing);
   return { samples: trimmed, speech: (last - first) / rate };
 }
 

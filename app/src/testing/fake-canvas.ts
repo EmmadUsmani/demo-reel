@@ -111,7 +111,14 @@ export function fakeContext(): FakeContext {
 }
 
 /** The log without the bookkeeping, for comparing two renders: same calls, same alpha, same transform. */
-export const snapshot = (g: FakeContext) => g.log.map((c) => [c.op, c.args, c.alpha, c.matrix]);
+export const snapshot = (g: FakeContext) => g.log.map((c) => [c.op, plain(c.args), c.alpha, c.matrix]);
+
+/** Functions (a gradient's addColorStop) compare by identity, so a snapshot swaps them for a marker. */
+const plain = (value: unknown): unknown =>
+  typeof value === 'function' ? '[function]'
+    : Array.isArray(value) ? value.map(plain)
+      : value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype ? Object.fromEntries(Object.entries(value).map(([k, v]) => [k, plain(v)]))
+        : value;
 
 const numbers = (value: unknown, found: number[] = []): number[] => {
   if (typeof value === 'number') found.push(value);

@@ -34,7 +34,13 @@ export class Recorder {
   private things = new WeakMap<object, string>();
   private count = 0;
 
-  reset() { this.calls = []; this.problems = []; }
+  /** Start a frame: empty the log, and number gradients and canvases from 1 again so equal frames read equal. */
+  reset() {
+    this.calls = [];
+    this.problems = [];
+    this.things = new WeakMap();
+    this.count = 0;
+  }
 
   /** save()s not yet restored, across every context: a frame must leave none behind. */
   openSaves() { return this.stacks.reduce((n, stack) => n + stack.length, 0); }

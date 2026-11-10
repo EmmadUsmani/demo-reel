@@ -115,10 +115,17 @@ export async function bootEngine(edit: Edit) {
   } finally { restore(); }
 }
 
-const booted = new Map<string, Promise<{ edit: Edit; engine: Awaited<ReturnType<typeof bootEngine>> }>>();
+const booted = new Map<string, Promise<{ edit: Edit; engine: Awaited<ReturnType<typeof bootEngine>>; files: string[] }>>();
 
-/** A project's edit and its booted engine, once per test run (call after installBrowser). */
+/** A project's edit and its booted engine (and the footage urls booting asked for), once per test run (call after installBrowser). */
 export function project(name: string) {
-  if (!booted.has(name)) booted.set(name, loadEdit(name).then(async (edit) => ({ edit, engine: await bootEngine(edit) })));
+  if (!booted.has(name)) {
+    booted.set(name, (async () => {
+      const edit = await loadEdit(name);
+      const before = requested.length;
+      const engine = await bootEngine(edit);
+      return { edit, engine, files: requested.slice(before) };
+    })());
+  }
   return booted.get(name)!;
 }

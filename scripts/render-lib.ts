@@ -128,6 +128,7 @@ export function analyzeJumps(diffs: number[], from: number) {
     const typical = around[Math.floor(around.length / 2)] ?? 0;
     if (d > 1.5 && d > 4 * typical + 0.5) flagged.push(`  ${(from + (i + 1) / 60).toFixed(3)}s  change ${d.toFixed(2)}  (neighbours ~${typical.toFixed(2)})`);
   });
+  if (!diffs.length) return ['0 frame steps: the range is shorter than two frames', 'no pops'];
   const sorted = [...diffs].sort((a, b) => a - b);
   return [
     `${diffs.length} frame steps  median ${sorted[sorted.length >> 1]!.toFixed(2)}  p99 ${sorted[Math.floor(sorted.length * 0.99)]!.toFixed(2)}  max ${sorted[sorted.length - 1]!.toFixed(2)}`,

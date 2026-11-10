@@ -235,6 +235,10 @@ describe('analyzeJumps', () => {
     expect(verdict).toContain('0.500s  change 5.00');
   });
 
+  test('a range shorter than two frames has no steps to judge, and says so instead of crashing', () => {
+    expect(analyzeJumps([], 3)).toEqual(['0 frame steps: the range is shorter than two frames', 'no pops']);
+  });
+
   test('reports every pop, in time order', () => {
     const diffs = steady(80);
     diffs[10] = 4;

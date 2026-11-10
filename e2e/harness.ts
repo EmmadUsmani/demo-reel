@@ -9,7 +9,11 @@ export const ROOT = path.resolve(import.meta.dir, '..');
 export const EDIT = process.env.E2E_EDIT ?? 'news-digest';
 export const OUT = path.join(ROOT, 'out', `e2e-web-${EDIT}`);
 
-export async function serve(): Promise<{ url: string; browser: Browser; close: () => Promise<void> }> {
+/** One build, server and browser for every test file in the run; they stop when the run ends. */
+let served: Promise<{ url: string; browser: Browser }> | undefined;
+export function serve() { return (served ??= start()); }
+
+async function start(): Promise<{ url: string; browser: Browser }> {
   for (const need of [`projects/${EDIT}/footage/manifest.json`, `out/audio-${EDIT}/mix.wav`, `out/audio-${EDIT}/effects.wav`, `out/audio-${EDIT}/captions.json`]) {
     if (!existsSync(path.join(ROOT, need))) throw new Error(`${need} is missing: capture the footage and run bun scripts/audio.ts --edit ${EDIT} first`);
   }
@@ -23,7 +27,8 @@ export async function serve(): Promise<{ url: string; browser: Browser; close: (
     await Bun.sleep(100);
   }
   const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--autoplay-policy=no-user-gesture-required'] });
-  return { url, browser, close: async () => { await browser.close(); server.kill(); } };
+  process.on('exit', () => server.kill());
+  return { url, browser };
 }
 
 /** A page on the player, with every error, failed request and console error collected in `problems`. */

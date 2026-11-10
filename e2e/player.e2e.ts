@@ -1,11 +1,10 @@
 // The HTML player, end to end in headless Chrome: bun run test:e2e (see harness.ts for what it needs).
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { beforeAll, describe, expect, test } from 'bun:test';
 import path from 'node:path';
 import { EDIT, fps, open, ROOT, serve, state } from './harness';
 
 let server: Awaited<ReturnType<typeof serve>>;
 beforeAll(async () => { server = await serve(); }, 240_000);
-afterAll(async () => { await server?.close(); });
 
 const captions: { at: number; end: number; text: string }[] = await Bun.file(path.join(ROOT, `out/audio-${EDIT}/captions.json`)).json();
 

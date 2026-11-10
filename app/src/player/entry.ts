@@ -1,6 +1,9 @@
 // The HTML player's page (app/player.html): plays one edit in the browser, drawn live by the same
 // engine that renders the MP4, with the soundtrack scripts/audio.ts mixed. A built player
 // (scripts/build.ts) holds one edit; on the dev server, choose one with ?edit=<name>.
+//   ?mode=slides    the video as a deck: each step plays to the next stop and holds
+//   ?slide=<n>      slides mode: open on slide n (1-based)
+//   ?scene=<id>     only this scene (an embed): its own range, stops and sound
 //   ?t=<s>          start (and show the poster) at this time
 //   ?captions=1     captions on          ?narration=0   the soundtrack without the voice
 import './player.css';
@@ -22,12 +25,16 @@ async function boot() {
   const canvas = document.createElement('canvas');
   const engine = new Engine(canvas, edit.timeline);
   await loadFonts();
-  await engine.init();
+  const scene = params.get('scene') ?? undefined;
+  await engine.init(scene ? (e) => e.id === scene : undefined);
   if (engine.errors.length) console.error(engine.errors.join('\n\n'));
   // a handle for tests driving the page (e2e/)
   (window as any).__player = new Player(root, canvas, engine, {
     name,
     title: edit.title ?? name,
+    mode: params.get('mode') === 'slides' ? 'slides' : 'video',
+    scene,
+    slide: params.has('slide') ? +params.get('slide')! : undefined,
     t: params.has('t') ? +params.get('t')! : undefined,
     poster: edit.poster ? (engine.timeline.find((e) => e.id === edit.poster!.scene)?.start ?? 0) + edit.poster.at : undefined,
     captions: params.get('captions') === '1',

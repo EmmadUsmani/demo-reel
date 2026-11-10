@@ -63,7 +63,7 @@ bun scripts/build.ts --edit todomvc              # the HTML player: a static fol
 ## Tests
 
 ```sh
-bun run test        # unit tests (bun test): the player's clock, project helpers
+bun run test        # unit tests (bun test): the player's clock and deck, stop placement, project helpers
 bun run test:e2e    # the built player in headless Chrome; needs the edit's footage and audio (E2E_EDIT=<name>, default news-digest)
 ```
 

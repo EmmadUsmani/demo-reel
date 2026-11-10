@@ -155,9 +155,12 @@ bunx vite preview --outDir $PWD/out/web-news-digest --port 5190
 - **Sound:** two tracks, `mix` and `effects` (the effects alone, not ducked under a voice), so the narration can be switched off. Without a soundtrack the player plays silently on the wall clock; if the browser pauses the sound (media keys, headphones), the video pauses with it.
 - **Captions** come from `captions.json`, each line timed to its speech. A line's on-screen text is its `caption` (`Line.caption`, the cards' `caption` param), so respellings written for Kokoro ("Reddis", "A.P.I.") read as the words are written; without one it is the spoken `text`.
 - **The poster**, the frame shown before the first play, is `Edit.poster` (`{ scene, at }`); `Edit.title` names the page.
-- **Keys:** space or `k` play/pause, ←/→ ±5 s (shift: one frame), `n` narration, `c` captions, `m` mute, `f` full screen. URL: `?t=<s>`, `?captions=1`, `?narration=0`.
+- **Slides mode** (`?mode=slides`, or the Slides toggle / `v`): the video as a deck. Each step forward plays from one stop to the next, narration included, and holds there; back jumps to the previous stop at once; `?slide=<n>` opens on a slide. Speaker notes (`s`) are the lines said on the way to the slide, in their written form.
+- **Stops** are where a deck pauses: `Scene.stops()` (scene-local), the moments each beat is fully built. A scene that names none stops on its last frame, and no stop lands in a crossfade (`engine/stops.ts`). The shared cards stop before they clear; news-digest's `Narrated` stops 0.7 s before each beat ends, before the change into the next beat begins. Check them with a sheet at `__video.stops`, the times the export API lists.
+- **Embeds:** `?scene=<id>` loads and plays that one entry: its range, its stops, its stretch of the soundtrack. Share (in the controls) gives links to the moment and the slide, and an `<iframe>` for the scene on screen.
+- **Keys:** space or `k` play/pause, ←/→ ±5 s (shift: one frame), `n` narration, `c` captions, `m` mute, `f` full screen, `v` slides. In slides: →/space/Enter forward, ← back, Home/End, `s` notes. URL: `?t=<s>`, `?captions=1`, `?narration=0`.
 - **Size:** a slide-led edit is small (news-digest: about 19 MB, most of it plates and sound). Edits built on recorded clips ship every PNG frame and are hundreds of MB: fine on your own host, too big for most others until clips are encoded as video.
-- **Tests:** `app/src/player/clock.test.ts` (the clock, in `bun run test`) and `e2e/player.e2e.ts` (the built player in headless Chrome, `bun run test:e2e`).
+- **Tests:** unit (`bun run test`): `player/clock.test.ts`, `player/deck.test.ts`, `engine/stops.test.ts`. Browser (`bun run test:e2e`): `e2e/player.e2e.ts` and `e2e/slides.e2e.ts` drive the built player in headless Chrome.
 
 ## Toolbox
 

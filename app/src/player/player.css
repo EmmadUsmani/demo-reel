@@ -55,3 +55,30 @@ button[hidden] { display: none; }
   background: #14142b; color: #e0e0f0; font-size: 12px; pointer-events: none;
 }
 .tip[hidden] { display: none; }
+
+/* slides mode: a pager instead of the scrubber, and speaker notes under the slide */
+.pager { display: inline-flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
+.pager[hidden], .time[hidden], .track[hidden], .play[hidden], label[hidden] { display: none; }
+.pager button:disabled { opacity: 0.35; cursor: default; }
+.count { min-width: 64px; text-align: center; color: #dcdcf0; }
+.player.slides .bar { padding-top: 18px; }
+.notes {
+  flex: 0 0 auto; max-height: 26vh; overflow: auto; padding: 14px 22px 18px; box-sizing: border-box;
+  background: #14142b; border-top: 1px solid #26264a; color: #e4e4f2; font-size: 17px; line-height: 1.5; user-select: text;
+}
+.notes[hidden] { display: none; }
+.notes h2 { margin: 0 0 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #8b8fc0; }
+.notes p { margin: 0 0 6px; max-width: 90ch; }
+.notes .hint { color: #8b8fc0; }
+
+/* share: links and an embed snippet, over the top right of the video */
+.share {
+  position: absolute; right: 12px; bottom: 64px; width: min(440px, 80%); padding: 12px; border-radius: 10px;
+  background: #14142bf2; box-shadow: 0 10px 40px rgb(0 0 0 / 0.35); display: grid; gap: 10px; z-index: 2;
+}
+.share[hidden] { display: none; }
+.share label { display: grid; gap: 4px; font-size: 12px; color: #a5a8c4; }
+.share input, .share textarea {
+  font: 12px/1.4 ui-monospace, Menlo, monospace; color: #e4e4f2; background: #0c0c18; border: 1px solid #2c2c50;
+  border-radius: 6px; padding: 6px 8px; resize: none; user-select: text;
+}

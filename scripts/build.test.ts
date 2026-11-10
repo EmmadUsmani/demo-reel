@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { buildOptions, copyFootage, dirSize, encodeSoundtrack, footageFiles, megabytes, mp3Args } from './build-lib';
+import { RATE, writeWav } from './audio-lib';
 import { ffmpegTest, probeAudio, sineWav, tempDir } from './test-support';
 
 const ROOT = path.resolve(import.meta.dir, '..');
@@ -175,6 +176,21 @@ describe('encodeSoundtrack', () => {
     const audioIn = path.join(tmp.dir, 'in');
     lay({ 'in/mix.wav': 'this is not a wav' });
     await expect(encodeSoundtrack('demo', audioIn, path.join(tmp.dir, 'out'), '128k', tmp.dir)).rejects.toThrow(/ffmpeg .*mix\.wav.* failed/);
+  });
+});
+
+describe('the encoded soundtrack lines up with the WAV it came from', () => {
+  ffmpegTest('a click at 1.000 s is still at 1.000 s, and the length is unchanged, after the MP3 round trip', async () => {
+    const wav = path.join(tmp.dir, 'in.wav'), mp3 = path.join(tmp.dir, 'out.mp3'), raw = path.join(tmp.dir, 'out.f32');
+    const click = new Float32Array(RATE * 2);
+    for (let i = 0; i < 2000; i++) click[RATE + i] = 0.8 * Math.sin(i / 3) * Math.exp(-i / 400);
+    await Bun.write(wav, writeWav([click, click], RATE));
+    expect(Bun.spawnSync(mp3Args(wav, mp3, '128k')).exitCode).toBe(0);
+    expect(Bun.spawnSync(['ffmpeg', '-y', '-v', 'error', '-i', mp3, '-f', 'f32le', '-ac', '1', '-ar', String(RATE), raw]).exitCode).toBe(0);
+    const decoded = new Float32Array(await Bun.file(raw).arrayBuffer());
+    const loudest = (a: Float32Array) => a.reduce((best, v, i) => (Math.abs(v) > Math.abs(a[best]!) ? i : best), 0);
+    expect(decoded.length).toBe(click.length);
+    expect(Math.abs(loudest(decoded) - loudest(click))).toBeLessThanOrEqual(2); // the encoder's delay is compensated
   });
 });
 

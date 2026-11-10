@@ -222,7 +222,7 @@ describe('renderEffects', () => {
     expect(Buffer.from(wide.R.buffer).equals(Buffer.from(edge.R.buffer))).toBe(true);
   });
 
-  test('a cue each kind default-pans differently: click leans right, drop leans left', () => {
+  test('each kind has its own default pan: click leans right, drop leans left', () => {
     const click = renderEffects([cue('click', 1)], N), drop = renderEffects([cue('drop', 1)], N);
     expect(peak(click.R)).toBeGreaterThan(peak(click.L));
     expect(peak(drop.L)).toBeGreaterThan(peak(drop.R));

@@ -143,6 +143,7 @@ export class Player {
     if (this.t >= this.to - 0.02 || (!this.started && this.o.t === undefined)) this.t = this.from;
     this.playing = this.started = true;
     this.silent = false;
+    this.drawn = Number.NaN; // captions appear once the video has started: redraw this frame even if the clock hasn't moved yet
     this.clockReset();
     this.sync();
   }

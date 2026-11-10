@@ -4,10 +4,17 @@
 // Two modes over the same frames: video (play straight through) and slides (deck.ts: each step plays
 // from one stop to the next and holds). A player can also be limited to one scene, for embedding.
 import type { Engine } from '../engine/engine';
+import { AmbientClock } from './ambient';
+import { CORNER_HTML, paintCorner } from './corner';
 import { PlaybackClock } from './clock';
 import { Deck, type Move } from './deck';
+import { ICON } from './icons';
 import { keyCommand } from './keys';
-import { captionAt, clockText, escapeHtml, notesFor, sceneAt, startTime, type Caption } from './moments';
+import { viewHash } from './params';
+import { attachScrub, paintProgress, PROGRESS_HTML } from './progress';
+import { slideNotes, type Spoken } from '../engine/notes';
+import { authoredNotes, fetchCaptions, narrationCaptions } from './captions';
+import { captionAt, clockText, escapeHtml, sceneAt, spanOf, startTime, type Caption } from './moments';
 import { shareLinks } from './share';
 
 export type Mode = 'video' | 'slides';
@@ -27,23 +34,14 @@ export type PlayerOptions = {
   poster?: number;
   captions: boolean;
   narration: boolean;
+  /** False for an edit that is a deck (Edit.deck): no soundtrack is asked for, and time runs on the wall clock. */
+  sound?: boolean;
 };
 
 type Track = 'mix' | 'effects';
 
 /** Built players carry MP3 (every browser, every host that serves audio); the dev server, audio.ts's WAVs. */
 const AUDIO_EXT = import.meta.env.PLAYER_AUDIO;
-
-const ICON = {
-  play: '<svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></svg>',
-  pause: '<svg viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>',
-  replay: '<svg viewBox="0 0 24 24"><path d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg>',
-  sound: '<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9zM16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/><path d="M4 9v6h4l5 4V5L8 9z"/></svg>',
-  muted: '<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 9.5l5 5M21.5 9.5l-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
-  fullscreen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
-  prev: '<svg viewBox="0 0 24 24"><path d="M15.5 5.5L8.5 12l7 6.5z"/></svg>',
-  next: '<svg viewBox="0 0 24 24"><path d="M8.5 5.5l7 6.5-7 6.5z"/></svg>',
-};
 
 export class Player {
   private t: number;
@@ -56,6 +54,11 @@ export class Player {
   private mode: Mode;
   private deck: Deck;
   private clock: PlaybackClock;
+  /** The clock for motion that goes on while a slide is held (Frame.ambient); in the video it is just t. */
+  private ambient = new AmbientClock();
+  private drawnAmbient = Number.NaN;
+  /** The progress bar is being dragged: the step stands still where the pointer puts it. */
+  private scrubbing = false;
   /** The browser refused to start the sound (autoplay rules): play silently until the next play. */
   private silent = false;
   private tracks: Partial<Record<Track, HTMLAudioElement>> = {};
@@ -64,25 +67,29 @@ export class Player {
   private notesOn = false;
   private muted = false;
   private captions: Caption[];
+  private authored: Spoken[];
   private idleTimer = 0;
   private el: Record<string, HTMLElement> = {};
 
   constructor(private root: HTMLElement, private canvas: HTMLCanvasElement, private engine: Engine, private o: PlayerOptions) {
-    const entry = o.scene ? engine.timeline.find((e) => e.id === o.scene) : undefined;
-    if (o.scene && !entry) throw new Error(`no scene '${o.scene}' (scenes: ${engine.timeline.map((e) => e.id).join(', ')})`);
-    this.from = entry?.start ?? 0;
-    this.to = entry?.end ?? engine.duration;
+    const span = spanOf(engine.timeline, o.scene, engine.duration);
+    this.from = span.start;
+    this.to = span.end;
     this.clock = new PlaybackClock(this.to);
     this.deck = new Deck(engine.stops().map((s) => s.t).filter((t) => t >= this.from && t < this.to), this.from);
     this.mode = o.mode;
     this.narration = o.narration;
     this.captionsOn = o.captions;
-    this.captions = engine.narration().map((line) => ({ at: line.at, end: line.until, text: line.caption ?? line.text }));
-    this.t = startTime({ from: this.from, to: this.to, t: o.t, embed: !!entry, stops: this.deck.stops, poster: o.poster, timeline: engine.timeline });
+    this.captions = narrationCaptions(engine);
+    this.authored = authoredNotes(engine);
+    this.t = startTime({ from: this.from, to: this.to, t: o.t, embed: !!o.scene, stops: this.deck.stops, poster: o.poster, timeline: engine.timeline });
     if (this.mode === 'slides' && o.slide) { this.started = true; this.t = (this.deck.go(o.slide - 1) as { t: number }).t; }
+    if (this.mode === 'slides') this.ambient.hold(performance.now());
     this.build();
-    this.loadAudio();
-    void this.loadCaptions();
+    if (o.sound !== false) {
+      this.loadAudio();
+      void this.loadCaptions();
+    }
     requestAnimationFrame((now) => this.frame(now));
   }
 
@@ -112,7 +119,7 @@ export class Player {
       // paused from outside (media keys, headphones unplugged, the browser): the video pauses with it. The
       // event arrives a task after the pause, so one from our own sync() that the video has played on
       // from since (a double tap of space) finds the audio playing again: not a pause from outside.
-      audio.addEventListener('pause', () => { if (audio.paused && this.playing && audio === this.track() && !audio.ended) this.pause(); });
+      audio.addEventListener('pause', () => { if (audio.paused && this.playing && !this.ambient.paused && audio === this.track() && !audio.ended) this.pause(); });
       audio.src = url;
       this.tracks[track] = audio;
     }
@@ -120,10 +127,7 @@ export class Player {
 
   /** scripts/audio.ts times each caption to its speech; without it, a caption shows for its whole beat. */
   private async loadCaptions() {
-    try {
-      const response = await fetch(`audio/${this.o.name}/captions.json`);
-      if (response.ok) this.captions = (await response.json()) as Caption[];
-    } catch { /* keep the beat-long captions */ }
+    this.captions = (await fetchCaptions(this.o.name)) ?? this.captions;
     this.drawn = Number.NaN;
     this.notes();
   }
@@ -172,7 +176,7 @@ export class Player {
   private sync() {
     const heard = this.track();
     for (const audio of Object.values(this.tracks)) {
-      if (audio !== heard || !this.playing) { if (!audio.paused) audio.pause(); continue; }
+      if (audio !== heard || !this.playing || this.ambient.paused) { if (!audio.paused) audio.pause(); continue; }
       audio.muted = this.muted;
       if (Math.abs(audio.currentTime - this.t) > 0.05) audio.currentTime = this.t;
       if (audio.paused) {
@@ -206,10 +210,14 @@ export class Player {
     if (move.kind === 'show') {
       this.playing = false;
       this.seek(move.t);
+      this.ambient.reset();
+      this.ambient.hold(performance.now());
       this.sync();
     } else {
       this.playing = true; // before the seek, which would otherwise take the deck back to that slide
       this.seek(move.from);
+      this.ambient.resume(performance.now());
+      this.ambient.play(performance.now());
       this.silent = false;
       this.clockReset();
       this.sync();
@@ -217,9 +225,44 @@ export class Player {
     this.notes();
   }
 
+  /** Slides mode: freeze the step and the ambient motion, or let them run on. */
+  togglePause() {
+    if (this.mode !== 'slides') return;
+    const now = performance.now();
+    if (this.ambient.paused) { this.ambient.resume(now); this.clockReset(); }
+    else this.ambient.pause(now);
+    this.sync();
+  }
+
+  /** Dragging the progress bar: the step goes where the pointer is; on release it plays on from there (or, paused or arrived, stays). */
+  private scrubStart() { this.scrubbing = true; }
+
+  private scrubTo(fraction: number) {
+    const t = this.deck.scrub(fraction);
+    if (t === null) return;
+    this.t = t;
+    this.drawn = Number.NaN;
+    const audio = this.track();
+    if (audio) audio.currentTime = t;
+  }
+
+  private scrubEnd() {
+    this.scrubbing = false;
+    if (this.deck.slide < 0 && this.deck.target === null) return; // before the first slide there is no step to scrub
+    this.started = true;
+    const now = performance.now();
+    this.playing = this.deck.target !== null;
+    if (this.playing) this.ambient.play(now);
+    else this.ambient.hold(now);
+    this.clockReset();
+    this.sync();
+    this.notes();
+  }
+
   setMode(mode: Mode) {
     if (mode === this.mode) return;
     this.mode = mode;
+    this.ambient.reset();
     if (mode === 'slides') {
       this.deck.sync(this.t);
       this.go(this.deck.slide);
@@ -232,23 +275,27 @@ export class Player {
   // ------------------------------------------------------------------ drawing
 
   private async frame(perf: number) {
-    if (this.playing) {
+    if (this.playing && !this.ambient.paused && !this.scrubbing) {
       this.t = this.clock.read(this.t, perf, this.track());
       if (this.mode === 'slides' && this.deck.arrive(this.t)) {
         this.playing = false;
         this.seek(this.deck.stops[this.deck.slide]!);
+        this.ambient.hold(perf);
         this.sync();
       } else if (this.t >= this.to) {
         this.t = this.to - 1e-3;
         this.pause();
       }
     }
+    const ambient = this.mode === 'slides' ? this.ambient.read(this.t, perf) : this.t;
     try {
-      if (this.t !== this.drawn) {
+      // a held slide is drawn again every frame: its ambient motion goes on
+      if (this.t !== this.drawn || ambient !== this.drawnAmbient) {
         const t = this.t;
-        await this.engine.prepare(t);
-        this.engine.render(t);
+        await this.engine.prepare(t, 1, 0.5, 60, ambient);
+        this.engine.render(t, 1, 0.5, 60, ambient);
         this.drawn = t;
+        this.drawnAmbient = ambient;
         this.tick();
       }
     } catch (error) {
@@ -265,6 +312,8 @@ export class Player {
     this.root.classList.toggle('slides', this.mode === 'slides');
     this.root.innerHTML = `
       <div class="stage"><div class="frame">
+        ${PROGRESS_HTML}
+        ${CORNER_HTML}
         <div class="caption" hidden></div>
         <button class="big" aria-label="Play">${ICON.play}</button>
         <div class="bar">
@@ -280,6 +329,7 @@ export class Player {
             <button class="pill cc" aria-pressed="false" title="Captions (c)">CC</button>
             <button class="pill notes-on" aria-pressed="false" title="Speaker notes (s)">Notes</button>
             <button class="pill mode" aria-pressed="false" title="Slides: step through the video (v)">Slides</button>
+            <button class="pill presenter-on" title="Open the presenter view on this slide">Presenter</button>
             <button class="pill share-on" aria-pressed="false">Share</button>
             <button class="fs" aria-label="Full screen" title="Full screen (f)">${ICON.fullscreen}</button>
           </div>
@@ -287,12 +337,14 @@ export class Player {
         <div class="share" hidden>
           <label>Link to this moment<input class="link-t" readonly></label>
           <label class="for-slides">Link to this slide<input class="link-slide" readonly></label>
+          <label>Presenter view: notes, next slide, timer<input class="link-presenter" readonly></label>
+          <a class="open-presenter" target="_blank" rel="noopener">Open the presenter view</a>
           <label>Embed this scene<textarea class="embed" readonly rows="4"></textarea></label>
         </div>
       </div></div>
       <aside class="notes" hidden></aside>`;
     const $ = (selector: string) => this.root.querySelector<HTMLElement>(selector)!;
-    for (const name of ['frame', 'caption', 'big', 'bar', 'marks', 'scrub', 'tip', 'play', 'pager', 'back', 'count', 'fwd', 'mute', 'time', 'title', 'voice', 'cc', 'notes-on', 'mode', 'share-on', 'fs', 'share', 'link-t', 'link-slide', 'embed', 'notes']) this.el[name] = $(`.${name}`);
+    for (const name of ['frame', 'caption', 'big', 'bar', 'marks', 'scrub', 'tip', 'play', 'pager', 'back', 'count', 'fwd', 'mute', 'time', 'title', 'voice', 'cc', 'notes-on', 'mode', 'presenter-on', 'share-on', 'progress', 'corner', 'c-back', 'c-pause', 'c-next', 'fs', 'share', 'link-t', 'link-slide', 'link-presenter', 'open-presenter', 'embed', 'notes']) this.el[name] = $(`.${name}`);
     this.el.frame!.prepend(this.canvas);
     this.el.title!.textContent = this.o.scene ? `${this.o.title} · ${this.o.scene}` : this.o.title;
 
@@ -327,9 +379,21 @@ export class Player {
     this.el.cc!.addEventListener('click', () => this.setCaptions(!this.captionsOn));
     this.el['notes-on']!.addEventListener('click', () => this.setNotes(!this.notesOn));
     this.el.mode!.addEventListener('click', () => this.setMode(this.mode === 'video' ? 'slides' : 'video'));
+    this.el['c-back']!.addEventListener('click', () => this.prev());
+    this.el['c-pause']!.addEventListener('click', () => this.togglePause());
+    this.el['c-next']!.addEventListener('click', () => this.next());
+    attachScrub(this.el.progress!, {
+      start: () => this.scrubStart(),
+      to: (fraction) => this.scrubTo(fraction),
+      end: () => this.scrubEnd(),
+      nudge: (by) => { this.scrubStart(); this.scrubTo(this.deck.progress(this.t).fraction + by); this.scrubEnd(); },
+    });
+    this.el['presenter-on']!.addEventListener('click', () => this.openPresenter());
     this.el['share-on']!.addEventListener('click', () => this.share(this.el.share!.hidden === true));
-    for (const field of ['link-t', 'link-slide', 'embed']) this.el[field]!.addEventListener('focus', (event) => (event.target as HTMLInputElement).select());
+    for (const field of ['link-t', 'link-slide', 'link-presenter', 'embed']) this.el[field]!.addEventListener('focus', (event) => (event.target as HTMLInputElement).select());
     this.el.fs!.addEventListener('click', () => this.fullscreen());
+    // a click does not leave a button focused, so Space then pauses instead of pressing it again (Tab to a button still does)
+    this.root.addEventListener('mousedown', (event) => { if ((event.target as HTMLElement).closest('button')) event.preventDefault(); });
     window.addEventListener('keydown', (event) => this.key(event));
     this.root.addEventListener('pointermove', () => this.wake());
     this.ui();
@@ -337,7 +401,10 @@ export class Player {
   }
 
   private key(event: KeyboardEvent) {
-    if (event.metaKey || event.ctrlKey || event.altKey || (event.target as HTMLElement).closest?.('.share')) return;
+    const target = event.target as HTMLElement;
+    if (event.metaKey || event.ctrlKey || event.altKey || target.closest?.('.share')) return;
+    // a focused corner button takes space and Enter itself (a click)
+    if (target.closest?.('.corner') && [' ', 'Enter'].includes(event.key)) return;
     const command = keyCommand(event.key, event.shiftKey, this.mode);
     if (!command) return;
     switch (command.kind) {
@@ -345,6 +412,7 @@ export class Player {
       case 'prev': this.prev(); break;
       case 'slide': this.go(command.to === 'first' ? -1 : this.deck.count - 1); break;
       case 'toggle': this.toggle(); break;
+      case 'pause': this.togglePause(); break;
       case 'seekBy': this.seek(this.t + command.by); break;
       case 'seekStart': this.seek(this.from); break;
       case 'narration': this.setNarration(!this.narration); break;
@@ -359,6 +427,12 @@ export class Player {
     this.wake();
   }
 
+  /** The presenter view, on the slide on screen (in video mode, the one at or before the current time). */
+  private openPresenter() {
+    if (this.mode === 'video') this.deck.sync(this.t);
+    location.hash = viewHash('presenter', this.deck.target ?? this.deck.slide);
+  }
+
   private fullscreen() {
     // a host's frame may refuse it
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
@@ -371,9 +445,12 @@ export class Player {
     this.el['share-on']!.setAttribute('aria-pressed', String(open));
     if (!open) return;
     const scene = this.o.scene ?? sceneAt(this.engine.timeline, this.t) ?? '';
+    if (this.mode === 'video') this.deck.sync(this.t); // the slide the presenter's link opens on
     const links = shareLinks(location, { title: this.o.title, scene: this.o.scene, sceneOnScreen: scene, t: this.t, slide: this.deck.slide });
     (this.el['link-t'] as HTMLInputElement).value = links.moment;
     (this.el['link-slide'] as HTMLInputElement).value = links.slide;
+    (this.el['link-presenter'] as HTMLInputElement).value = links.presenter;
+    (this.el['open-presenter'] as HTMLAnchorElement).href = links.presenter;
     (this.el.embed as HTMLTextAreaElement).value = links.embed;
   }
 
@@ -405,11 +482,16 @@ export class Player {
     this.el.notes!.hidden = !(slides && this.notesOn);
     this.el.mode!.setAttribute('aria-pressed', String(slides));
     this.el.mode!.hidden = this.deck.count === 0;
+    this.el['presenter-on']!.hidden = this.deck.count === 0;
+    this.el.progress!.hidden = !slides;
+    this.el.corner!.hidden = !slides;
+    paintCorner(this.el.corner!, { paused: this.ambient.paused, canBack: this.deck.slide >= 0 || this.deck.target !== null, canNext: this.deck.slide < this.deck.count - 1 || this.deck.target !== null });
+    this.progress();
     this.el.play!.hidden = slides;
     this.el.pager!.hidden = !slides;
     this.el.time!.hidden = slides;
     $hide(this.el.scrub!.parentElement!, slides);
-    $hide(this.root.querySelector('.share .for-slides')!, !slides);
+    for (const el of this.root.querySelectorAll('.share .for-slides')) $hide(el, !slides);
     const shown = this.deck.target ?? this.deck.slide;
     this.el.count!.textContent = `${shown + 1 > 0 ? shown + 1 : '–'} / ${this.deck.count}`;
     (this.el.back as HTMLButtonElement).disabled = this.deck.slide < 0 && this.deck.target === null;
@@ -423,15 +505,18 @@ export class Player {
   private notes() {
     if (!this.el.notes) return;
     const k = this.deck.target ?? this.deck.slide;
-    const lines = notesFor(this.captions, this.deck.stops, this.from, k);
+    const lines = slideNotes({ authored: this.authored, spoken: this.captions }, this.deck.stops, this.from, k);
     this.el.notes!.innerHTML = k < 0
       ? '<p class="hint">Press → or click the slide to start. ← goes back.</p>'
-      : `<h2>Slide ${k + 1} of ${this.deck.count}</h2>${lines.map((l) => `<p>${escapeHtml(l.text)}</p>`).join('') || '<p class="hint">No narration on this slide.</p>'}`;
+      : `<h2>Slide ${k + 1} of ${this.deck.count}</h2>${lines.map((line) => `<p>${escapeHtml(line)}</p>`).join('') || '<p class="hint">No narration on this slide.</p>'}`;
     this.ui();
   }
 
-  /** What changes with every frame: the time, the scrubber and the caption. */
+  private progress() { paintProgress(this.el.progress!, this.deck.progress(this.t, this.ambient.paused)); }
+
+  /** What changes with every frame: the time, the scrubber, the step's progress and the caption. */
   private tick() {
+    this.progress();
     (this.el.scrub as HTMLInputElement).value = String(this.t);
     this.el.time!.textContent = `${clockText(this.t - this.from)} / ${clockText(this.to - this.from)}`;
     const caption = this.captionsOn && this.started ? captionAt(this.captions, this.t) : undefined;

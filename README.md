@@ -69,10 +69,10 @@ bun run test:e2e    # headless Chrome, ~3 min; needs the edit's footage and audi
 ```
 
 - `app/src/engine/`, `app/src/scenes/`: the engine's maths, camera, clips and drawing, and the shared cards, against a recording fake canvas (`app/src/testing/`): every frame is deterministic, finite and balanced.
-- `app/src/player/`, `app/src/preview.test.ts`: the player's URL parameters, keys, share links, captions, clock and deck.
+- `app/src/player/`, `app/src/preview.test.ts`: the player's URL parameters, keys, share links, captions, clock, ambient clock, deck and its step progress, speaker notes and the presenter's timer.
 - `projects/edits.test.ts`, `projects/render.test.ts`: every edit keeps the timeline rules (narration fits its slot and never overlaps, stops sit outside crossfades, plates exist in the manifest) and draws deterministically with stand-in footage (`projects/testing/`). Per-project helpers have their own tests.
 - `scripts/*.test.ts`: argument parsing, the audio mix, captions, limiter and loudness, the build, render flags and encoding, the slide plan and deck exports; real ffmpeg, Chrome, `pdfinfo` and `unzip` where cheap, skipped with a message if missing.
-- `e2e/`: the built player (controls, links, layout, sync, slides), the preview and `?export=1` page, and the static slide exports.
+- `e2e/`: the built player (controls, links, layout, sync, slides), the presenter view, the deck's interface (view switch, progress bar, ambient motion), decks, the single-file player (from `file://` and under an artifact's CSP), the `news-digest-deck` pilot, the preview and `?export=1` page, and the static slide exports.
 
 On a Mac, run the browser tests with the display awake (`caffeinate -d -i bun run test:e2e`): with the display asleep Chrome stops drawing and every test times out.
 
@@ -92,6 +92,7 @@ On a Mac, run the browser tests with the display awake (`caffeinate -d -i bun ru
 | `openstreetmap` | [OpenStreetMap](https://www.openstreetmap.org): search a city, watch the map fly to it, zoom down to the streets. | `bun projects/openstreetmap/capture.ts` (a recorded clip, live map tiles) | 0:34 |
 | `qiyami` | [Qiyami](https://www.qiyami.com): a prayer-time and last-third-of-the-night calculator; the dashboard, then the settings sheet (Asr method, city override). | `bun projects/qiyami/capture.ts` (a recorded clip, live site) | 0:47 |
 | `news-digest` | [News Digest](https://github.com/EmmadUsmani/news-digest): a slide-led reel for engineers about the agent factory that builds the app (one Codex agent in a supervisor loop, steered through repo files), with animated diagrams and real-data charts, then the product's architecture. | `bun projects/news-digest/capture.ts` (the build agent's own screenshots + live GitHub), `stats.ts`, `measure.ts`; audio at `--speed 1.1` | 8:36 |
+| `news-digest-deck` | A seven-slide pilot of the deck mode: news-digest's own scenes as a presentation, with speaker notes written per slide, stepped by hand; one HTML file with a presenter view (`#presenter`). | news-digest's | 7 slides |
 
 `todomvc` and `vite` are the short worked examples of the two ways to film: a frame-by-frame recording of the app's own motion, and still plates the renderer moves over. The other three are fuller recorded sessions (drawing on a canvas, a live network request, a live map). All five film public open-source sites, so they re-record anywhere with a network connection. Point `BASE_URL` at a local or self-hosted build to film that instead.
 

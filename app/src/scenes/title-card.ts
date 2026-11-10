@@ -4,14 +4,15 @@
 //     name: string,                 the product or feature, big
 //     subtitle?: string,            one line of what it is
 //     kicker?: string,              a chip under it ("Open source", "Now live", "Coming soon")
-//     line: string,                 the narration
+//     line?: string,                the narration (a deck has none)
 //     caption?: string,             the narration as it reads on screen, when it is respelled
+//     notes?: string,               what a presenter says on this slide (deck speaker notes)
 //     cards?: CardSpec[],           polaroids, see cards.ts
 //     dur?: number                  seconds (default 5)
 //   }
 import { backdrop, chip, polaroid } from '../engine/draw';
 import { C, font } from '../engine/palette';
-import { Scene, W, type Cue, type Frame, type Line } from '../engine/scene';
+import { Scene, W, type Cue, type Frame, type Line, type Note } from '../engine/scene';
 import { clamp, ease, lerp, prog } from '../engine/util';
 import { cardLayout, loadCard, type Card, type CardSpec } from './cards';
 
@@ -29,6 +30,8 @@ export default class TitleCard extends Scene {
 
   duration() { return this.dur; }
   stops() { return [this.exit - 1 / 60]; }
+  /** The card is one slide: its note goes on that slide. */
+  notes(): Note[] { return this.ctx.params.notes ? [{ at: 0, text: this.ctx.params.notes }] : []; }
 
   narration(): Line[] {
     const line: string | undefined = this.ctx.params.line;
@@ -47,9 +50,9 @@ export default class TitleCard extends Scene {
 
   render(f: Frame) {
     const g = this.g;
-    const { t, lt } = f;
+    const { ambient, lt } = f;
     const { name, subtitle, kicker } = this.ctx.params;
-    backdrop(g, t);
+    backdrop(g, ambient);
     const out = prog(lt, this.exit, this.exit + 0.6, ease.inCubic);
     const hasCards = this.cards.length > 0;
     g.save();
@@ -62,7 +65,7 @@ export default class TitleCard extends Scene {
       if (!card) return; // cardLayout(0) still lays out one slot
       const k = prog(lt, CARDS_IN + i * CARD_STAGGER, CARDS_IN + i * CARD_STAGGER + 0.9, ease.spring);
       if (k <= 0) return;
-      const bob = Math.sin(t * 1.4 + x) * 5 * k;
+      const bob = Math.sin(ambient * 1.4 + x) * 5 * k;
       g.save();
       g.globalAlpha *= clamp(k * 2);
       polaroid(g, card.image, card.crop, x * lerp(0.4, 1, k), y + bob + 60 * (1 - k), width, rotation * k);

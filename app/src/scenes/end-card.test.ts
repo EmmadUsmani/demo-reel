@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import EndCard from './end-card';
 import { fakeContext } from '../testing/fake-canvas';
 import { installFakeNetwork, manifestOf, routesOf } from '../testing/footage';
-import { expectPureRender, renderAt, visibleAlphas } from '../testing/scenes';
+import { expectAmbientMotion, expectPureRender, renderAt, visibleAlphas } from '../testing/scenes';
 
 let network: ReturnType<typeof installFakeNetwork> | undefined;
 afterEach(() => network?.restore());
@@ -18,6 +18,21 @@ async function make(params: Record<string, unknown> = {}, withCard = false) {
 }
 const texts = (g: ReturnType<typeof fakeContext>) => g.calls('fillText').map((c) => c.args[0]);
 const full = { subtitle: 'open source', pill: 'Beta', chips: ['Fast', 'Small', 'Local'] };
+
+describe('EndCard speaker notes', () => {
+  test('none unless it has a notes param; then one note, at the start of the card, so before its stop wherever a crossfade puts that', async () => {
+    expect((await make()).notes()).toEqual([]);
+    expect((await make({ notes: '' })).notes()).toEqual([]);
+    for (const dur of [4, 5.4, 8]) {
+      const scene = await make({ dur, notes: 'Thank them.' });
+      expect(scene.notes()).toEqual([{ at: 0, text: 'Thank them.' }]);
+    }
+  });
+
+  test('a deck card needs no line: notes without one leave the narration empty', async () => {
+    expect((await make({ line: undefined, notes: 'Thank them.' })).narration()).toEqual([]);
+  });
+});
 
 describe('EndCard timing and sound', () => {
   test('runs 5.4 s unless told otherwise', async () => {
@@ -118,5 +133,11 @@ describe('EndCard rendering', () => {
       expect(alpha).toBeGreaterThanOrEqual(previous - 1e-9);
       previous = alpha;
     }
+  });
+});
+
+describe('EndCard ambient motion', () => {
+  test('the backdrop and what bobs on it follow Frame.ambient, so a held slide keeps moving', async () => {
+    expectAmbientMotion(await make({}, true), 3, 5.4);
   });
 });

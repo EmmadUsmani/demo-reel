@@ -26,13 +26,13 @@ export default class Observe extends Narrated {
   render(f: Frame) {
     const g = this.g;
     const lt = f.lt;
-    backdrop(g, f.t);
+    backdrop(g, f.ambient);
     heading(g, 'Observability', 'Self-hosted, on the same VM', prog(lt, 0.1, 0.9), 110, 140, 64);
     const p = (k: number) => prog(lt, this.at0(k), this.at0(k) + 0.5);
     const out = prog(lt, this.E('a6a') - 3.0, this.E('a6a') - 2.4);
     g.save();
     g.globalAlpha = 1 - 0.7 * out;
-    const flow = lt, gray = '#8A93A8';
+    const flow = f.ambient - (f.t - f.lt), gray = '#8A93A8';
     node(g, 110, 400, 330, 130, 'API · worker · agent', p(0.15), { sub: 'JSON logs and metrics', px: 28 });
     node(g, 110, 640, 330, 130, 'Host · Postgres · Redis', p(0.15), { sub: 'exporters', px: 28 });
     node(g, 560, 400, 330, 130, 'Fluent Bit → VictoriaLogs', p(0.3), { sub: '14 days · 2 GB', tone: 'agent', px: 26 });

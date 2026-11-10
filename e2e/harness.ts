@@ -101,3 +101,56 @@ export const drawn = (page: Page, t: number) => page.waitForFunction((t) => (win
 
 /** The written captions (captions.json, from audio.ts) the player shows. */
 export const readCaptions = async (): Promise<{ at: number; end: number; text: string }[]> => Bun.file(path.join(ROOT, `out/audio-${EDIT}/captions.json`)).json();
+
+/** The single-file player (scripts/build.ts --single), built once per run beside the folder build. */
+export const SINGLE_OUT = path.join(ROOT, 'out', `e2e-single-${EDIT}.html`);
+let singled: string | undefined;
+export function buildSingle() {
+  if (singled) return singled;
+  const build = Bun.spawnSync(['bun', 'scripts/build.ts', '--edit', EDIT, '--single', '--out', SINGLE_OUT], { cwd: ROOT, stderr: 'pipe' });
+  if (build.exitCode !== 0) throw new Error(`single build failed:\n${build.stderr}`);
+  return (singled = SINGLE_OUT);
+}
+
+/** The presenter's view (?view=presenter), read through its test handle. */
+export const presenterState = (page: Page) => page.evaluate(() => {
+  const P = (window as any).__player;
+  const q = (selector: string) => document.querySelector(selector) as HTMLElement;
+  return {
+    slide: P.deck.slide as number, target: P.deck.target as number | null, stops: P.deck.stops as number[], t: P.t as number, playing: P.playing as boolean,
+    count: q('.p-count').textContent!, notes: q('.p-notes').textContent!, paragraphs: [...document.querySelectorAll('.p-notes p')].map((p) => p.textContent!),
+    elapsed: q('.p-elapsed').textContent!, pause: q('.p-pause').textContent!, stopwatch: P.stopwatch.state as string,
+    stillShown: !q('.p-still').hidden, endShown: !q('.p-end').hidden, prevDisabled: (q('.p-prev') as HTMLButtonElement).disabled, nextDisabled: (q('.p-fwd') as HTMLButtonElement).disabled,
+  };
+});
+
+/** Wait until the presenter has arrived on a slide (no step playing) and drawn it and the still of the one after. */
+export const presenterSettled = (page: Page) => page.waitForFunction(() => {
+  const P = (window as any).__player;
+  return P.deck.target === null && !P.playing && P.drawn === P.t && P.stillOf === P.deck.upNext();
+}, null, { timeout: 30_000 });
+
+/** A single-file player of any edit (scripts/build.ts --single), built once per edit per run. */
+const singles = new Map<string, string>();
+export function buildSingleOf(edit: string) {
+  if (!singles.has(edit)) {
+    const out = path.join(ROOT, 'out', `e2e-single-${edit}.html`);
+    const build = Bun.spawnSync(['bun', 'scripts/build.ts', '--edit', edit, '--single', '--out', out], { cwd: ROOT, stderr: 'pipe' });
+    if (build.exitCode !== 0) throw new Error(`single build of ${edit} failed:\n${build.stderr}`);
+    singles.set(edit, out);
+  }
+  return singles.get(edit)!;
+}
+
+/**
+ * A Claude artifact's rules, made stricter: a sandboxed frame (an opaque origin), scripts and styles inline,
+ * images, media and fonts only from data and blob, and no connections at all. A real artifact frame lets the
+ * page connect to its own origin and blob:, but never to data:, so fetching an inlined font fails there too.
+ */
+export const ARTIFACT_CSP = "sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'";
+
+/** Serve one HTML file under ARTIFACT_CSP, as a response header the way a host sends it (a meta tag can't sandbox). */
+export function serveAsArtifact(file: string): { url: string; stop: () => void } {
+  const server = Bun.serve({ port: 0, fetch: () => new Response(Bun.file(file), { headers: { 'content-type': 'text/html; charset=utf-8', 'content-security-policy': ARTIFACT_CSP } }) });
+  return { url: `http://localhost:${server.port}/`, stop: () => server.stop(true) };
+}

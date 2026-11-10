@@ -7,6 +7,8 @@ export type Command =
   /** Slides: jump to the first (the start of the video) or the last slide. */
   | { kind: 'slide'; to: 'first' | 'last' }
   | { kind: 'toggle' }
+  /** Slides: freeze or resume the step and the ambient motion. */
+  | { kind: 'pause' }
   /** Video: move by this many seconds. */
   | { kind: 'seekBy'; by: number }
   | { kind: 'seekStart' }
@@ -20,7 +22,8 @@ export const FRAME_STEP = 1 / 60;
 /** The command for a key (KeyboardEvent.key) in this mode, or null when the player ignores it. */
 export function keyCommand(key: string, shift: boolean, mode: Mode): Command | null {
   const slides = mode === 'slides';
-  if (slides && [' ', 'ArrowRight', 'PageDown', 'Enter'].includes(key)) return { kind: 'next' };
+  if (slides && [' ', 'k'].includes(key)) return { kind: 'pause' };
+  if (slides && ['ArrowRight', 'PageDown', 'Enter'].includes(key)) return { kind: 'next' };
   if (slides && ['ArrowLeft', 'PageUp', 'Backspace'].includes(key)) return { kind: 'prev' };
   if (slides && key === 'Home') return { kind: 'slide', to: 'first' };
   if (slides && key === 'End') return { kind: 'slide', to: 'last' };

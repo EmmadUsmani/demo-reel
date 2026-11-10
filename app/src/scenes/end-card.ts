@@ -5,14 +5,15 @@
 //     subtitle?: string,            "open source, on GitHub"
 //     pill?: string,                a status pill above the name ("Coming soon", "Beta")
 //     chips?: string[],             3–4 short phrases
-//     line: string,                 the narration
+//     line?: string,                the narration (a deck has none)
 //     caption?: string,             the narration as it reads on screen, when it is respelled
+//     notes?: string,               what a presenter says on this slide (deck speaker notes)
 //     card?: CardSpec,              see cards.ts
 //     dur?: number                  seconds (default 5.4)
 //   }
 import { backdrop, chip, polaroid, roundRect } from '../engine/draw';
 import { C, font, withAlpha } from '../engine/palette';
-import { Scene, W, type Cue, type Frame, type Line } from '../engine/scene';
+import { Scene, W, type Cue, type Frame, type Line, type Note } from '../engine/scene';
 import { clamp, ease, lerp, prog } from '../engine/util';
 import { loadCard, type Card } from './cards';
 
@@ -26,6 +27,8 @@ export default class EndCard extends Scene {
   async init() { if (this.ctx.params.card) this.card = await loadCard(this.ctx.params.card); }
   duration() { return this.dur; }
   stops() { return [this.dur - 0.7 - 1 / 60]; }
+  /** The card is one slide: its note goes on that slide. */
+  notes(): Note[] { return this.ctx.params.notes ? [{ at: 0, text: this.ctx.params.notes }] : []; }
 
   narration(): Line[] {
     const line: string | undefined = this.ctx.params.line;
@@ -43,16 +46,16 @@ export default class EndCard extends Scene {
 
   render(f: Frame) {
     const g = this.g;
-    const { t, lt } = f;
+    const { ambient, lt } = f;
     const { name, subtitle, pill } = this.ctx.params;
-    backdrop(g, t);
+    backdrop(g, ambient);
     const top = this.card ? 0 : -170;
 
     const k = prog(lt, 0.1, 1.0, ease.spring);
     if (this.card && k > 0) {
       g.save();
       g.globalAlpha = clamp(k * 2);
-      polaroid(g, this.card.image, this.card.crop, W / 2, 280 + Math.sin(t * 1.4) * 5 * k + 50 * (1 - k), 560 * lerp(0.7, 1, k), 0.04 * k);
+      polaroid(g, this.card.image, this.card.crop, W / 2, 280 + Math.sin(ambient * 1.4) * 5 * k + 50 * (1 - k), 560 * lerp(0.7, 1, k), 0.04 * k);
       g.restore();
     }
 
@@ -108,6 +111,6 @@ export default class EndCard extends Scene {
     g.restore();
 
     const out = prog(lt, this.dur - 0.7, this.dur, ease.inOutQuad);
-    if (out > 0) { g.save(); g.globalAlpha = out; backdrop(g, t); g.restore(); }
+    if (out > 0) { g.save(); g.globalAlpha = out; backdrop(g, ambient); g.restore(); }
   }
 }

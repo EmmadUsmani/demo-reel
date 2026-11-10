@@ -1,9 +1,10 @@
 // Which stops become slides in a static deck (scripts/slides.ts), and what each slide's notes say.
 // Pure, so it is unit-tested (slides-plan.test.ts).
+import { slideNotes, type Spoken } from '../app/src/engine/notes';
 
 /** A stop rendered small: its time, scene, and a greyscale thumbnail to compare pictures by. */
 export type Shot = { t: number; scene: string; thumb: Uint8Array };
-export type Spoken = { at: number; text: string };
+export type { Spoken };
 export type Slide = { t: number; scene: string; notes: string[] };
 
 /** How far (of 255) a pixel must move to count: above compression and antialiasing noise. */
@@ -31,17 +32,14 @@ export function lost(a: Uint8Array, b: Uint8Array) {
 /**
  * The slides, in order. With `builds` off (the default), a stop whose content the next stop in its
  * scene keeps (it loses less than `threshold` of it) is a build step: the next stop stands for both. A
- * slide's notes are the lines spoken after the previous slide, up to and including it (the last slide
- * also takes any said after it).
+ * slide's notes are the ones the player shows (engine/notes.ts): the `authored` notes on the way to it, else
+ * the lines `spoken` on the way (the last slide also takes any said after it).
  */
-export function plan(shots: Shot[], spoken: Spoken[], { builds = false, threshold = 0.1 } = {}): Slide[] {
+export function plan(shots: Shot[], spoken: Spoken[], { builds = false, threshold = 0.1, authored = [] as Spoken[] } = {}): Slide[] {
   const kept = shots.filter((shot, i) => {
     const next = shots[i + 1];
     return builds || !next || next.scene !== shot.scene || lost(shot.thumb, next.thumb) >= threshold;
   });
-  return kept.map((shot, i) => {
-    const after = i === 0 ? -Infinity : kept[i - 1]!.t;
-    const last = i === kept.length - 1;
-    return { t: shot.t, scene: shot.scene, notes: spoken.filter((l) => l.at > after && (last || l.at <= shot.t)).map((l) => l.text) };
-  });
+  const stops = kept.map((shot) => shot.t);
+  return kept.map((shot, k) => ({ t: shot.t, scene: shot.scene, notes: slideNotes({ authored, spoken }, stops, -Infinity, k, true) }));
 }

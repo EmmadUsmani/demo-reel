@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import Chapter from './chapter';
 import { fakeContext } from '../testing/fake-canvas';
 import { installFakeNetwork, manifestOf, routesOf } from '../testing/footage';
-import { expectPureRender, renderAt, visibleAlphas } from '../testing/scenes';
+import { expectAmbientMotion, expectPureRender, renderAt, visibleAlphas } from '../testing/scenes';
 
 let network: ReturnType<typeof installFakeNetwork> | undefined;
 afterEach(() => network?.restore());
@@ -18,6 +18,15 @@ async function make(withStill = false, params: Record<string, unknown> = {}) {
   return { scene, footage };
 }
 const texts = (g: ReturnType<typeof fakeContext>) => g.calls('fillText').map((c) => c.args[0]);
+
+describe('Chapter speaker notes', () => {
+  test('none unless it has a notes param; then one note, at the start of the card, so before its stop wherever a crossfade puts that', async () => {
+    expect((await make()).scene.notes()).toEqual([]);
+    const { scene } = await make(false, { notes: 'Introduce the factory.' });
+    expect(scene.notes()).toEqual([{ at: 0, text: 'Introduce the factory.' }]);
+    expect(scene.narration()).toEqual([]);
+  });
+});
 
 describe('Chapter timing and sound', () => {
   test('is 2.6 s long whatever the params say', async () => {
@@ -42,7 +51,7 @@ describe('Chapter rendering', () => {
   test('is a pure function of time with every alpha in range, with and without a still', async () => {
     for (const withStill of [false, true]) {
       const { scene } = await make(withStill);
-      await scene.prepare({ t: 0, lt: 1, p: 0, dur: DUR });
+      await scene.prepare({ t: 0, ambient: 0, lt: 1, p: 0, dur: DUR });
       expectPureRender(scene, DUR, 78);
     }
   });
@@ -57,7 +66,7 @@ describe('Chapter rendering', () => {
   test('the still shows only once its frame is decoded, then as a polaroid', async () => {
     const { scene, footage } = await make(true);
     expect(renderAt(scene, 1, DUR).calls('drawImage')).toEqual([]);
-    await scene.prepare({ t: 0, lt: 1, p: 0, dur: DUR });
+    await scene.prepare({ t: 0, ambient: 0, lt: 1, p: 0, dur: DUR });
     expect(network!.fetched).toContain(`footage/${footage}/clips/demo/0003.jpg`);
     const g = renderAt(scene, 1, DUR);
     expect(g.calls('drawImage').length).toBe(1);
@@ -65,7 +74,7 @@ describe('Chapter rendering', () => {
 
   test('at the stop the title, line and still are fully in', async () => {
     const { scene } = await make(true);
-    await scene.prepare({ t: 0, lt: 1, p: 0, dur: DUR });
+    await scene.prepare({ t: 0, ambient: 0, lt: 1, p: 0, dur: DUR });
     const g = renderAt(scene, scene.stops()[0]!, DUR);
     expect(visibleAlphas(g)).toEqual([1, 1, 1]);
   });
@@ -81,7 +90,7 @@ describe('Chapter rendering', () => {
 
   test('fades out through the last 0.45 s: nearly gone on the last frame, gone at the end', async () => {
     const { scene } = await make(true);
-    await scene.prepare({ t: 0, lt: 1, p: 0, dur: DUR });
+    await scene.prepare({ t: 0, ambient: 0, lt: 1, p: 0, dur: DUR });
     expect(Math.max(...visibleAlphas(renderAt(scene, DUR - 1 / 60, DUR)))).toBeLessThan(0.15);
     expect(visibleAlphas(renderAt(scene, DUR, DUR)).filter((a) => a > 0)).toEqual([]);
     let previous = 1;
@@ -94,7 +103,13 @@ describe('Chapter rendering', () => {
 
   test('the exit does not begin before the stop', async () => {
     const { scene } = await make(true);
-    await scene.prepare({ t: 0, lt: 1, p: 0, dur: DUR });
+    await scene.prepare({ t: 0, ambient: 0, lt: 1, p: 0, dur: DUR });
     expect(visibleAlphas(renderAt(scene, scene.stops()[0]!, DUR)).every((a) => a === 1)).toBe(true);
+  });
+});
+
+describe('Chapter ambient motion', () => {
+  test('the backdrop and what bobs on it follow Frame.ambient, so a held slide keeps moving', async () => {
+    expectAmbientMotion((await make()).scene, 1.6, DUR);
   });
 });

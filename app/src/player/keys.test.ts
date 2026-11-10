@@ -41,8 +41,8 @@ describe('keyCommand: video', () => {
 });
 
 describe('keyCommand: slides', () => {
-  test('space, right, page down and enter go forward', () => {
-    for (const key of [' ', 'ArrowRight', 'PageDown', 'Enter']) expect(keyCommand(key, false, 'slides'), key).toEqual({ kind: 'next' });
+  test('right, page down and enter go forward', () => {
+    for (const key of ['ArrowRight', 'PageDown', 'Enter']) expect(keyCommand(key, false, 'slides'), key).toEqual({ kind: 'next' });
   });
 
   test('left, page up and backspace go back', () => {
@@ -59,8 +59,9 @@ describe('keyCommand: slides', () => {
     expect(keyCommand('End', false, 'slides')).toEqual({ kind: 'slide', to: 'last' });
   });
 
-  test('k is still play/pause (which steps forward in slides)', () => {
-    expect(keyCommand('k', false, 'slides')).toEqual({ kind: 'toggle' });
+  test('space and k pause and resume (they used to step forward)', () => {
+    for (const key of [' ', 'k']) expect(keyCommand(key, false, 'slides'), key).toEqual({ kind: 'pause' });
+    for (const key of [' ', 'k']) expect(keyCommand(key, false, 'video'), key).toEqual({ kind: 'toggle' });
   });
 
   test('the toggles work the same', () => {

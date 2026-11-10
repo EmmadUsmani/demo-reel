@@ -39,12 +39,13 @@ describe('Scene defaults', () => {
   class Plain extends Scene { render(_f: Frame) {} }
   const scene = new Plain({ g: {} as CanvasRenderingContext2D, start: 0, end: 1, params: {} } satisfies SceneContext);
 
-  test('a scene with nothing to say makes no sound, no narration and no stops, and has no opinion on its length', async () => {
+  test('a scene with nothing to say makes no sound, no narration, no speaker notes and no stops, and has no opinion on its length', async () => {
     expect(scene.cues()).toEqual([]);
     expect(scene.narration()).toEqual([]);
+    expect(scene.notes()).toEqual([]);
     expect(scene.stops()).toEqual([]);
     expect(scene.duration()).toBeUndefined();
     await scene.init();
-    await scene.prepare({ t: 0, lt: 0, p: 0, dur: 1 });
+    await scene.prepare({ t: 0, ambient: 0, lt: 0, p: 0, dur: 1 });
   });
 });

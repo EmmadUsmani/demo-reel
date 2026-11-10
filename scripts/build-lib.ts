@@ -3,22 +3,30 @@ import { cpSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from './lib';
 
-export type BuildOptions = { edit: string; out: string; bitrate: string; project: string; audio: string };
+export type BuildOptions = { edit: string; out: string; bitrate: string; project: string; audio: string; single: boolean };
 
-/** What `build.ts --edit <name> [--out dir] [--bitrate 128k]` means, under the repo at `root`. */
+/** What `build.ts --edit <name> [--single] [--out dir|file.html] [--bitrate 128k]` means, under the repo at `root`. */
 export function buildOptions(argv: string[], root: string): BuildOptions {
-  const { opt } = parseArgs(argv);
+  const { opt, flag } = parseArgs(argv);
+  const single = flag('single');
   const edit = opt('edit');
   if (!edit) throw new Error('--edit <name> is required');
   const project = path.join(root, 'projects', edit);
   if (!existsSync(path.join(project, 'timeline.ts'))) throw new Error(`no project '${edit}'`);
   return {
     edit,
-    out: path.resolve(opt('out', path.join(root, `out/web-${edit}`))!),
+    out: outPath(opt('out'), edit, single, root),
     bitrate: opt('bitrate', '128k')!,
     project,
     audio: path.join(root, 'out', `audio-${edit}`),
+    single,
   };
+}
+
+/** Where the build goes: a folder, or with --single one .html file (the extension is added if --out leaves it off). */
+export function outPath(out: string | undefined, edit: string, single: boolean, root: string): string {
+  const file = path.resolve(out ?? path.join(root, `out/web-${edit}`));
+  return single && !file.endsWith('.html') ? `${file}.html` : file;
 }
 
 type Manifest = {
@@ -34,6 +42,21 @@ export function footageFiles(manifest: Manifest): string[] {
   for (const extra of Object.values(manifest.extras ?? {})) if (typeof extra?.file === 'string') files.add(extra.file);
   for (const clip of Object.values(manifest.clips ?? {})) for (const frame of clip.frames) files.add(`${clip.dir}/${frame.file}`);
   return [...files];
+}
+
+/** How many clips (recorded frame sequences) the footage in `footageIn` holds. */
+export async function clipCount(footageIn: string): Promise<number> {
+  const manifestFile = path.join(footageIn, 'manifest.json');
+  if (!existsSync(manifestFile)) return 0;
+  return Object.keys((await Bun.file(manifestFile).json() as Manifest).clips ?? {}).length;
+}
+
+/** Every file under `dir` as its path relative to `dir` (with `/`), sorted. */
+export function listFiles(dir: string): string[] {
+  return readdirSync(dir, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => path.relative(dir, path.join(entry.parentPath, entry.name)).split(path.sep).join('/'))
+    .sort();
 }
 
 /** Copy what the footage manifest names (and nothing else in the folder) into the player. A project with no manifest has no footage. */

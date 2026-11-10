@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { buildOptions, copyFootage, dirSize, encodeSoundtrack, footageFiles, megabytes, mp3Args } from './build-lib';
+import { buildOptions, clipCount, copyFootage, dirSize, encodeSoundtrack, footageFiles, listFiles, megabytes, mp3Args } from './build-lib';
 import { RATE, writeWav } from './audio-lib';
 import { ffmpegTest, probeAudio, sineWav, tempDir } from './test-support';
 
@@ -30,7 +30,15 @@ describe('buildOptions', () => {
       bitrate: '128k',
       project: path.join(tmp.dir, 'projects/demo'),
       audio: path.join(tmp.dir, 'out/audio-demo'),
+      single: false,
     });
+  });
+
+  test('--single writes one file: out/web-<name>.html by default, and --out gets an .html extension if it lacks one', () => {
+    expect(buildOptions(['--edit', 'demo', '--single'], tmp.dir)).toMatchObject({ single: true, out: path.join(tmp.dir, 'out/web-demo.html') });
+    expect(buildOptions(['--edit', 'demo', '--single', '--out', '/x/deck.html'], tmp.dir).out).toBe('/x/deck.html');
+    expect(buildOptions(['--edit', 'demo', '--single', '--out', '/x/deck'], tmp.dir).out).toBe('/x/deck.html');
+    expect(buildOptions(['--edit', 'demo', '--out', '/x/deck'], tmp.dir)).toMatchObject({ single: false, out: '/x/deck' });
   });
 
   test('--out and --bitrate override the defaults, and --out is made absolute', () => {
@@ -194,6 +202,21 @@ describe('the encoded soundtrack lines up with the WAV it came from', () => {
   });
 });
 
+describe('clipCount and listFiles', () => {
+  test('clipCount counts the manifest clips, and is 0 without footage', async () => {
+    expect(await clipCount(tmp.dir)).toBe(0);
+    lay({ 'manifest.json': JSON.stringify({ shots: {}, clips: { a: { dir: 'a', frames: [] }, b: { dir: 'b', frames: [] } } }) });
+    expect(await clipCount(tmp.dir)).toBe(2);
+    lay({ 'manifest.json': JSON.stringify({ shots: {} }) });
+    expect(await clipCount(tmp.dir)).toBe(0);
+  });
+
+  test('listFiles is every file below a folder, relative with / and sorted', () => {
+    lay({ 'b.txt': '', 'a/z.txt': '', 'a/deep/y.txt': '' });
+    expect(listFiles(tmp.dir)).toEqual(['a/deep/y.txt', 'a/z.txt', 'b.txt']);
+  });
+});
+
 describe('size reporting', () => {
   test('dirSize adds up every file below a folder', () => {
     lay({ 'a.txt': '12345', 'sub/b.txt': '123', 'sub/deep/c.txt': '12' });
@@ -223,4 +246,26 @@ describe('build.ts on the command line', () => {
     expect(result.stderr.toString()).toContain("no project 'no-such-project'");
     expect(existsSync(out)).toBe(false);
   });
+});
+
+// needs news-digest's captured footage and scripts/audio.ts's output (both gitignored): skipped without them
+const haveNewsDigest = existsSync(path.join(ROOT, 'projects/news-digest/footage/manifest.json')) && existsSync(path.join(ROOT, 'out/audio-news-digest/mix.wav'));
+describe('build.ts --single on news-digest', () => {
+  const test_ = haveNewsDigest ? test : test.skip;
+  test_('writes exactly one self-contained file that carries every plate the manifest names', async () => {
+    const out = path.join(tmp.dir, 'deck');
+    const built = Bun.spawnSync(['bun', 'scripts/build.ts', '--edit', 'news-digest', '--single', '--out', out], { cwd: ROOT, stdout: 'pipe', stderr: 'pipe' });
+    expect(built.stderr.toString().replace(/warning: .*\n/g, '')).toBe('');
+    expect(built.exitCode).toBe(0);
+    expect(readdirSync(tmp.dir)).toEqual(['deck.html']);
+    const html = readFileSync(path.join(tmp.dir, 'deck.html'), 'utf8');
+    expect(html).not.toMatch(/<script[^>]*\ssrc=/);
+    expect(html).not.toMatch(/<link[^>]*\shref="(?!data:)/);
+    expect(html).not.toContain('./assets/');
+    const embedded = JSON.parse(html.match(/<script type="application\/json" id="embedded-files">([\s\S]*?)<\/script>/)![1]!);
+    const manifest = await Bun.file(path.join(ROOT, 'projects/news-digest/footage/manifest.json')).json();
+    for (const file of footageFiles(manifest)) expect(embedded[`footage/news-digest/${file}`]).toBeDefined();
+    for (const file of ['mix.mp3', 'effects.mp3', 'captions.json']) expect(embedded[`audio/news-digest/${file}`]).toBeDefined();
+    expect(html.match(/<script type="module">/g)).toHaveLength(1);
+  }, 120_000);
 });

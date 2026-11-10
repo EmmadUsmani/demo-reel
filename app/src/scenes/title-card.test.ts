@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import TitleCard from './title-card';
 import { fakeContext, range } from '../testing/fake-canvas';
 import { installFakeNetwork, manifestOf, routesOf } from '../testing/footage';
-import { expectPureRender, renderAt, visibleAlphas } from '../testing/scenes';
+import { expectAmbientMotion, expectPureRender, renderAt, visibleAlphas } from '../testing/scenes';
 
 let network: ReturnType<typeof installFakeNetwork> | undefined;
 afterEach(() => network?.restore());
@@ -36,6 +36,22 @@ describe('TitleCard timing', () => {
     const lines = (await make({ line: 'Acme, a thing.', caption: 'Acme: a thing.', dur: 6 })).narration();
     expect(lines).toEqual([{ id: 'title', at: 0.6, until: 5.8, text: 'Acme, a thing.', caption: 'Acme: a thing.' }]);
     expect(lines[0]!.until).toBeLessThan(6);
+  });
+});
+
+describe('TitleCard speaker notes', () => {
+  test('none unless it has a notes param; then one note, at the start of the card, so before its stop wherever a crossfade puts that', async () => {
+    expect((await make()).notes()).toEqual([]);
+    expect((await make({ notes: '' })).notes()).toEqual([]);
+    for (const dur of [4, 5, 9]) {
+      const scene = await make({ dur, notes: 'Say hello.' });
+      expect(scene.notes()).toEqual([{ at: 0, text: 'Say hello.' }]);
+    }
+  });
+
+  test('a deck card needs no narration line, and notes do not become narration', async () => {
+    const scene = await make({ notes: 'Say hello.' });
+    expect(scene.narration()).toEqual([]);
   });
 });
 
@@ -136,5 +152,11 @@ describe('TitleCard rendering', () => {
       expect(name).toBeLessThanOrEqual(previous + 1e-12);
       previous = name;
     }
+  });
+});
+
+describe('TitleCard ambient motion', () => {
+  test('the backdrop and what bobs on it follow Frame.ambient, so a held slide keeps moving', async () => {
+    expectAmbientMotion(await make({}, 2), 3, 5);
   });
 });

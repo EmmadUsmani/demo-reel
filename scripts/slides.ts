@@ -8,7 +8,8 @@
 //   deck.pptx                    PowerPoint with the notes; Keynote and Google Slides open it too
 // By default a stop that only adds a little to the next one in its scene (a build step) folds into it
 // (slides-plan.ts); --builds keeps every stop. The notes are the captions scripts/audio.ts wrote, when
-// it has run: each line in its written form.
+// it has run: each line in its written form. A slide whose scene authors speaker notes (Scene.notes())
+// shows those instead.
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { openApp } from './lib';
@@ -21,8 +22,8 @@ const THUMB = { w: 480, h: 270 }; // fine enough that a line of text registers
 
 const { browser, page, stop } = await openApp({ edit: EDIT });
 try {
-  const video: { title: string; stops: { t: number; scene: string }[]; narration: { at: number; text: string; caption?: string }[] } =
-    await page.evaluate(() => { const V = (window as any).__video; return { title: V.title, stops: V.stops, narration: V.narration }; });
+  const video: { title: string; stops: { t: number; scene: string }[]; narration: { at: number; text: string; caption?: string }[]; notes: { at: number; text: string }[] } =
+    await page.evaluate(() => { const V = (window as any).__video; return { title: V.title, stops: V.stops, narration: V.narration, notes: V.notes }; });
   if (!video.stops.length) throw new Error(`${EDIT} has no stops`);
   const captions = path.join(ROOT, `out/audio-${EDIT}/captions.json`);
   const spoken = spokenLines(existsSync(captions) ? await Bun.file(captions).json() : undefined, video.narration);
@@ -40,7 +41,7 @@ try {
     }, { t: s.t, ...THUMB });
     shots.push({ ...s, thumb: Uint8Array.from(grey) });
   }
-  const slides = plan(shots, spoken, { builds: BUILDS, threshold: THRESHOLD });
+  const slides = plan(shots, spoken, { builds: BUILDS, threshold: THRESHOLD, authored: video.notes });
 
   // ---------------------------------------------------------------- the stills
   rmSync(OUT, { recursive: true, force: true });

@@ -1,14 +1,15 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { Engine, type TimelineEntry } from './engine';
-import { H, PH, PW, Scene, SCALE, W, type Cue, type Frame, type Line, type SceneClass } from './scene';
+import { slideNotes } from './notes';
+import { H, PH, PW, Scene, SCALE, W, type Cue, type Frame, type Line, type Note, type SceneClass } from './scene';
 import { expectCleanLog, fakeContext, snapshot, type FakeContext } from '../testing/fake-canvas';
 import { installFakeOffscreenCanvas } from '../testing/footage';
 
-type Opts = { duration?: number; cues?: Cue[]; narration?: Line[]; stops?: number[]; throwsInRender?: boolean; throwsInInit?: boolean };
+type Opts = { duration?: number; cues?: Cue[]; narration?: Line[]; notes?: Note[]; stops?: number[]; throwsInRender?: boolean; throwsInInit?: boolean };
 type Drawn = { id: string; frame: Frame; g: unknown };
 
 let drawn: Drawn[];
-let prepared: { id: string; t: number }[];
+let prepared: { id: string; t: number; ambient: number }[];
 let layers: ReturnType<typeof installFakeOffscreenCanvas>;
 let main: FakeContext;
 
@@ -27,8 +28,9 @@ function entry(id: string, timing: { dur?: number; overlap?: number } = {}, opts
     duration() { return opts.duration; }
     cues() { return opts.cues ?? []; }
     narration() { return opts.narration ?? []; }
+    notes() { return opts.notes ?? []; }
     stops() { return opts.stops ?? []; }
-    async prepare(f: Frame) { prepared.push({ id, t: f.t }); }
+    async prepare(f: Frame) { prepared.push({ id, t: f.t, ambient: f.ambient }); }
     render(f: Frame) {
       drawn.push({ id, frame: f, g: this.g });
       this.g.fillRect(0, 0, 1, 1);
@@ -109,7 +111,7 @@ describe('drawing one scene', () => {
     engine.render(3);
     expect(drawn.length).toBe(1);
     expect(drawn[0]!.id).toBe('b');
-    expect(drawn[0]!.frame).toEqual({ t: 3, lt: 1, p: 0.25, dur: 4 });
+    expect(drawn[0]!.frame).toEqual({ t: 3, ambient: 3, lt: 1, p: 0.25, dur: 4 });
     expect(drawn[0]!.g).toBe(main);
     const [first] = main.log;
     expect(first!.op).toBe('setTransform');
@@ -173,7 +175,7 @@ describe('crossfades', () => {
     expect(drawn[1]!.g).not.toBe(main);
     expect(drawn[0]!.g).not.toBe(drawn[1]!.g);
     expect(drawn[0]!.frame.t).toBe(4.5);
-    expect(drawn[1]!.frame).toEqual({ t: 4.5, lt: 0.5, p: 0.1, dur: 5 });
+    expect(drawn[1]!.frame).toEqual({ t: 4.5, ambient: 4.5, lt: 0.5, p: 0.1, dur: 5 });
   });
 
   test('the earlier scene goes down at full alpha and the later one over it by how far into the overlap we are', async () => {
@@ -232,6 +234,37 @@ describe('crossfades', () => {
   });
 });
 
+describe('ambient time', () => {
+  test('is t unless the caller gives another clock, in a frame and in its crossfade', async () => {
+    const engine = await engineOf([entry('a', { dur: 5 }), entry('b', { dur: 5, overlap: 1 })]);
+    engine.render(4.5);
+    expect(drawn.map((d) => [d.frame.t, d.frame.ambient])).toEqual([[4.5, 4.5], [4.5, 4.5]]);
+  });
+
+  test('is the clock the caller gives while t holds, for render and prepare', async () => {
+    const engine = await engineOf([entry('a', { dur: 4 })]);
+    await engine.prepare(2, 1, 0.5, 60, 9.25);
+    engine.render(2, 1, 0.5, 60, 9.25);
+    expect(prepared).toEqual([{ id: 'a', t: 2, ambient: 9.25 }]);
+    expect(drawn[0]!.frame).toEqual({ t: 2, ambient: 9.25, lt: 2, p: 0.5, dur: 4 });
+  });
+
+  test('motion-blur sub-frames shift ambient by the same offset as t', async () => {
+    const engine = await engineOf([entry('a', { dur: 4 })]);
+    engine.render(2, 4, 0.5, 60, 10);
+    expect(drawn.map((d) => d.frame.ambient - d.frame.t).every((offset) => Math.abs(offset - 8) < 1e-9)).toBe(true);
+    drawn.length = 0;
+    engine.render(2, 4, 0.5, 60);
+    expect(drawn.every((d) => d.frame.ambient === d.frame.t)).toBe(true);
+  });
+
+  test('prepare shifts the neighbouring motion-blur frames the same way', async () => {
+    const engine = await engineOf([entry('a', { dur: 4 })]);
+    await engine.prepare(2, 4, 0.5, 60, 7);
+    expect(prepared.map((p) => p.ambient - p.t).every((d) => Math.abs(d - 5) < 1e-9)).toBe(true);
+  });
+});
+
 describe('motion blur', () => {
   test('averages sub-frames spread over the shutter, each over the running average at 1/(k+1)', async () => {
     const engine = await engineOf([entry('a', { dur: 4 })]);
@@ -265,7 +298,7 @@ describe('prepare', () => {
   test('prepares only the scenes on screen at t', async () => {
     const engine = await engineOf([entry('a', { dur: 2 }), entry('b', { dur: 2 }), entry('c', { dur: 2 })]);
     await engine.prepare(3);
-    expect(prepared).toEqual([{ id: 'b', t: 3 }]);
+    expect(prepared).toEqual([{ id: 'b', t: 3, ambient: 3 }]);
   });
 
   test('during a crossfade it prepares both', async () => {
@@ -310,6 +343,36 @@ describe('cues, narration and stops, in video time', () => {
       { id: 'one', at: 0.5, until: 3, text: 'Hello.', scene: 'a' },
       { id: 'two', at: 3.2, until: 5, text: 'World.', caption: 'World!', scene: 'b' },
     ]);
+  });
+
+  test('notes move by their scene\'s start, carry its id, and come out sorted', async () => {
+    const engine = await engineOf([
+      entry('a', { dur: 4 }, { notes: [{ at: 2.5, text: 'late' }, { at: 1, text: 'early' }] }),
+      entry('b', { dur: 4 }, { notes: [{ at: 0.5, text: 'in b' }] }),
+      entry('c', { dur: 2 }),
+    ]);
+    expect(engine.notes()).toEqual([
+      { at: 1, text: 'early', scene: 'a' },
+      { at: 2.5, text: 'late', scene: 'a' },
+      { at: 4.5, text: 'in b', scene: 'b' },
+    ]);
+  });
+
+  test('a note in a crossfade moves with the stop it is timed at, and stays on that slide', async () => {
+    // b fades in over a's last second (3..4): a's stop at 3.5 is placed a frame before b starts, b's at 0.2 where its fade-in ends
+    const engine = await engineOf([
+      entry('a', { dur: 4 }, { stops: [3.5], notes: [{ at: 3.5, text: 'end of a' }] }),
+      entry('b', { dur: 4, overlap: 1 }, { stops: [0.2, 3], notes: [{ at: 0.2, text: 'start of b' }, { at: 3, text: 'rest of b' }] }),
+    ]);
+    const stops = engine.stops().map((s) => s.t);
+    expect(engine.notes().map((n) => n.at)).toEqual(stops);
+    expect(stops.map((_, k) => slideNotes({ authored: engine.notes(), spoken: [] }, stops, 0, k))).toEqual([['end of a'], ['start of b'], ['rest of b']]);
+  });
+
+  test('a scene that did not load adds no notes', async () => {
+    const notes = [{ at: 0.5, text: 'x' }];
+    const engine = await engineOf([entry('a', { dur: 2 }, { notes }), entry('b', { dur: 2 }, { notes })], (e) => e.id === 'b');
+    expect(engine.notes()).toEqual([{ at: 2.5, text: 'x', scene: 'b' }]);
   });
 
   test('stops come from the loaded scenes, placed clear of crossfades', async () => {

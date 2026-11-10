@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { parseParams, startOf } from './params';
+import { parseParams, startOf, viewHash } from './params';
 
 describe('parseParams', () => {
   test('no query: nothing chosen (the edit decides mode and narration), captions off', () => {
@@ -44,6 +44,23 @@ describe('parseParams', () => {
     expect(p).toMatchObject({ mode: 'slides', slide: 5, scene: 'a', captions: true, t: 9 });
     expect(parseParams('?scene=a', '#scene-b').scene).toBe('b');
     expect(parseParams('?mode=video', '#slides').mode).toBe('slides');
+  });
+
+  test('#slides and #slide-N are the audience view even when the query says ?view=presenter', () => {
+    expect(parseParams('?view=presenter', '#slides').view).toBe('player');
+    expect(parseParams('?view=presenter&slide=2', '#slide-5')).toMatchObject({ view: 'player', mode: 'slides', slide: 5 });
+  });
+
+  test('#presenter and #presenter-N are the presenter view, and win over ?mode=', () => {
+    expect(parseParams('?mode=video', '#presenter')).toMatchObject({ view: 'presenter', mode: undefined });
+    expect(parseParams('?mode=slides&slide=2', '#presenter-6')).toMatchObject({ view: 'presenter', mode: undefined, slide: 6 });
+    expect(parseParams('?view=presenter', '#presenter-3')).toMatchObject({ view: 'presenter', slide: 3 });
+  });
+
+  test('a bare view name means no slide, whatever slide the query names', () => {
+    expect(parseParams('?slide=4', '#presenter').slide).toBeUndefined();
+    expect(parseParams('?slide=4', '#slides').slide).toBeUndefined();
+    expect(parseParams('?slide=4', '#slide-2').slide).toBe(2);
   });
 
   test('a hash that names nothing is ignored', () => {
@@ -126,5 +143,21 @@ describe('startOf', () => {
     expect(startOf(parseParams('?narration=0', ''), { deck: true }).narration).toBe(false);
     expect(startOf(parseParams('?narration=1', ''), { deck: true }).narration).toBe(true);
     expect(startOf(parseParams('', ''), { deck: true })).toEqual({ mode: 'slides', narration: false });
+  });
+});
+
+describe('viewHash', () => {
+  test('names the view on a slide, 1-based, and the bare view before the first slide', () => {
+    expect(viewHash('presenter', 2)).toBe('presenter-3');
+    expect(viewHash('player', 0)).toBe('slide-1');
+    expect(viewHash('presenter', -1)).toBe('presenter');
+    expect(viewHash('player', -1)).toBe('slides');
+  });
+
+  test('is what parseParams reads back: the same view on the same slide, over any query', () => {
+    for (const [view, slide] of [['presenter', 4], ['player', 4], ['presenter', -1], ['player', -1]] as const) {
+      const p = parseParams('?edit=x&view=presenter&mode=video&slide=9', `#${viewHash(view, slide)}`);
+      expect([p.view, p.slide].join(), `${view} ${slide}`).toBe([view, slide < 0 ? undefined : slide + 1].join());
+    }
   });
 });

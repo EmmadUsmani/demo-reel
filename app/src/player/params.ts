@@ -33,10 +33,11 @@ function numberOf(value: string | null): number | undefined {
 export function parseParams(search: string, hash: string): PlayerParams {
   const params = new URLSearchParams(search);
   const name = hash.replace(/^#/, '');
-  if (name === 'slides') params.set('mode', 'slides');
-  else if (/^slide-\d+$/.test(name)) { params.set('mode', 'slides'); params.set('slide', name.slice(6)); }
-  else if (name === 'presenter') params.set('view', 'presenter');
-  else if (/^presenter-\d+$/.test(name)) { params.set('view', 'presenter'); params.set('slide', name.slice(10)); }
+  // each name stands for a view (and a slide) and wins over the query's: #slides is the audience view even under ?view=presenter
+  if (name === 'slides') { params.set('mode', 'slides'); params.delete('view'); params.delete('slide'); }
+  else if (/^slide-\d+$/.test(name)) { params.set('mode', 'slides'); params.delete('view'); params.set('slide', name.slice(6)); }
+  else if (name === 'presenter') { params.set('view', 'presenter'); params.delete('mode'); params.delete('slide'); }
+  else if (/^presenter-\d+$/.test(name)) { params.set('view', 'presenter'); params.delete('mode'); params.set('slide', name.slice(10)); }
   else if (name.startsWith('scene-')) params.set('scene', name.slice(6));
   const narration = params.get('narration');
   const slide = numberOf(params.get('slide'));
@@ -50,6 +51,13 @@ export function parseParams(search: string, hash: string): PlayerParams {
     captions: params.get('captions') === '1',
     narration: narration === null ? undefined : narration !== '0',
   };
+}
+
+/** The #name that opens `view` on slide `slide` (0-based; -1 before the first): `slide-3`, `presenter-3`, or the bare `slides` / `presenter`. */
+export function viewHash(view: View, slide: number): string {
+  const base = view === 'presenter' ? 'presenter' : 'slide';
+  if (slide < 0) return view === 'presenter' ? 'presenter' : 'slides';
+  return `${base}-${slide + 1}`;
 }
 
 /** The mode and narration the player starts with: what the URL chose, else what the edit is (a deck: slides, narration off). */

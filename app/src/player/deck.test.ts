@@ -162,4 +162,160 @@ describe('Deck', () => {
     expect(deck.timeOf(-1)).toBe(2);
     expect(deck.timeOf(1)).toBe(10);
   });
+
+  describe('progress', () => {
+    test('is empty before the first slide', () => {
+      expect(new Deck([5, 10], 0).progress(0)).toEqual({ fraction: 0, state: 'empty' });
+    });
+
+    test('fills from the start of the step to the stop it plays to', () => {
+      const deck = new Deck([5, 10, 15], 0);
+      deck.next();
+      expect(deck.progress(0)).toEqual({ fraction: 0, state: 'playing' });
+      expect(deck.progress(2)).toEqual({ fraction: 0.4, state: 'playing' });
+      deck.arrive(5);
+      deck.next();
+      expect(deck.progress(5)).toEqual({ fraction: 0, state: 'playing' });
+      expect(deck.progress(7.5)).toEqual({ fraction: 0.5, state: 'playing' });
+    });
+
+    test('is done at arrival, and stays done while the slide is held', () => {
+      const deck = new Deck([5, 10], 0);
+      deck.next();
+      deck.arrive(5);
+      expect(deck.progress(5)).toEqual({ fraction: 1, state: 'done' });
+      expect(deck.progress(5)).toEqual({ fraction: 1, state: 'done' });
+    });
+
+    test('stays within 0..1 when the clock reads a little outside the step', () => {
+      const deck = new Deck([5, 10], 0);
+      deck.go(0);
+      deck.next();
+      expect(deck.progress(4.9).fraction).toBe(0);
+      expect(deck.progress(10.2).fraction).toBe(1);
+    });
+
+    test('a step finished early by a second press is done; back during a step shows the slide it left', () => {
+      const deck = new Deck([5, 10, 15], 0);
+      deck.go(0);
+      deck.next();
+      deck.next();
+      expect(deck.progress(7)).toEqual({ fraction: 1, state: 'done' });
+      deck.next();
+      deck.prev();
+      expect(deck.progress(11)).toEqual({ fraction: 1, state: 'done' });
+      deck.go(-1);
+      expect(deck.progress(0)).toEqual({ fraction: 0, state: 'empty' });
+    });
+
+    test('go and sync land on a held slide: done', () => {
+      const deck = new Deck([5, 10, 15], 0);
+      deck.go(2);
+      expect(deck.progress(15).state).toBe('done');
+      deck.sync(11);
+      expect(deck.progress(11)).toEqual({ fraction: 1, state: 'done' });
+    });
+
+    test('a step that starts from a held slide counts from the stop, whatever the ambient clock reads', () => {
+      const deck = new Deck([5, 10], 0);
+      deck.go(0); // held at t = 5 while the ambient clock runs on (it is not the deck's business)
+      deck.next();
+      expect(deck.progress(5)).toEqual({ fraction: 0, state: 'playing' });
+      expect(deck.progress(6)).toEqual({ fraction: 0.2, state: 'playing' });
+    });
+
+    test('a step restarts its progress when played again after back', () => {
+      const deck = new Deck([5, 10], 0);
+      deck.go(0);
+      deck.next();
+      deck.prev();
+      deck.next();
+      expect(deck.progress(5)).toEqual({ fraction: 0, state: 'playing' });
+    });
+  });
+
+  describe('paused', () => {
+    test('a step that is playing reads paused when the player has frozen it; a held slide stays done', () => {
+      const deck = new Deck([5, 10], 0);
+      expect(deck.progress(0, true)).toEqual({ fraction: 0, state: 'empty' });
+      deck.next();
+      expect(deck.progress(2, true)).toEqual({ fraction: 0.4, state: 'paused' });
+      deck.arrive(5);
+      expect(deck.progress(5, true)).toEqual({ fraction: 1, state: 'done' });
+    });
+  });
+
+  describe('scrub', () => {
+    test('does nothing before the first slide', () => {
+      const deck = new Deck([5, 10], 0);
+      expect(deck.scrub(0.5)).toBeNull();
+      expect(deck.slide).toBe(-1);
+    });
+
+    test('moves within the step playing: from where it started to the stop it plays to', () => {
+      const deck = new Deck([5, 10, 15], 0);
+      deck.go(0);
+      deck.next(); // 5 -> 10
+      expect(deck.scrub(0)).toBe(5);
+      expect(deck.scrub(0.5)).toBe(7.5);
+      expect(deck.scrub(0.9)).toBeCloseTo(9.5);
+      expect(deck.target).toBe(1);
+      expect(deck.slide).toBe(0);
+      expect(deck.progress(7.5)).toEqual({ fraction: 0.5, state: 'playing' });
+    });
+
+    test('the first step starts at the start of the video', () => {
+      const deck = new Deck([4, 10], 1);
+      deck.next();
+      expect(deck.scrub(0.5)).toBe(2.5);
+    });
+
+    test('dragging to the end arrives at the stop, and dragging back from it plays the step again', () => {
+      const deck = new Deck([5, 10], 0);
+      deck.next();
+      expect(deck.scrub(1)).toBe(5);
+      expect(deck.slide).toBe(0);
+      expect(deck.target).toBeNull();
+      expect(deck.progress(5)).toEqual({ fraction: 1, state: 'done' });
+      expect(deck.scrub(0.6)).toBe(3);
+      expect(deck.slide).toBe(-1);
+      expect(deck.target).toBe(0);
+    });
+
+    test('a drag past either end is clamped', () => {
+      const deck = new Deck([5, 10], 0);
+      deck.go(0);
+      deck.next();
+      expect(deck.scrub(-3)).toBe(5);
+      expect(deck.scrub(7)).toBe(10);
+      expect(deck.slide).toBe(1);
+      expect(deck.target).toBeNull();
+    });
+
+    test('an arrived slide stands for the step that led to it: scrubbing back replays it', () => {
+      const deck = new Deck([5, 10, 15], 0);
+      deck.go(1); // held on slide 2 (t = 10), reached by the step 5 -> 10
+      expect(deck.scrub(0.2)).toBe(6);
+      expect(deck.slide).toBe(0);
+      expect(deck.target).toBe(1);
+      expect(deck.next()).toEqual({ kind: 'show', t: 10 }); // forward finishes it, as for any step
+    });
+
+    test('back after a scrub undoes the step; the next step forward is the one after', () => {
+      const deck = new Deck([5, 10, 15], 0);
+      deck.go(0);
+      deck.next();
+      deck.scrub(0.5);
+      expect(deck.prev()).toEqual({ kind: 'show', t: 5 });
+      expect(deck.next()).toEqual({ kind: 'play', from: 5, to: 10 });
+    });
+
+    test('a zero-length step has nowhere to scrub: it reads full', () => {
+      const deck = new Deck([5, 5], 0);
+      deck.go(0);
+      deck.next();
+      expect(deck.progress(5).fraction).toBe(1);
+      expect(deck.scrub(0.5)).toBe(5);
+    });
+  });
 });

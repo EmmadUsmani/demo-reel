@@ -9,7 +9,8 @@
 //   ?view=presenter the presenter's view of the deck: this slide, the next, notes, timer (presenter.ts)
 // An edit that is a deck (Edit.deck) opens in slides mode with the narration off and asks for no
 // soundtrack; ?mode=video or ?narration=1 chooses otherwise. A host that passes only a #name to the
-// page (a Claude artifact) can use #slides, #slide-<n>, #scene-<id>, #presenter and #presenter-<n> instead.
+// page (a Claude artifact) can use #slides, #slide-<n>, #scene-<id>, #presenter and #presenter-<n> instead;
+// a #name wins over the query it stands for (#slides is the audience view even under ?view=presenter).
 import './player.css';
 import { loadFonts } from '../engine/assets';
 import { Engine } from '../engine/engine';
@@ -22,7 +23,8 @@ import { Presenter } from './presenter';
 const params = parseParams(location.search, location.hash);
 const root = document.getElementById('player')!;
 // A host that passes only a #name (a Claude artifact) changes it on the open page, as an address bar does:
-// start again on the view it names. The page never writes the hash itself, so this can't loop.
+// start again on the view it names. The page writes the hash only when the Presenter or Audience view
+// button is clicked (to switch view: the player's controls, the presenter's header), so this can't loop.
 window.addEventListener('hashchange', () => location.reload());
 
 async function boot() {

@@ -5,6 +5,12 @@
 /** What the player should do: play a stretch and hold at its end, or show a time, paused. */
 export type Move = { kind: 'play'; from: number; to: number } | { kind: 'show'; t: number };
 
+/**
+ * How far the step on screen has played: 'empty' before the first slide, 'playing' on the way to a stop
+ * ('paused' when the player has frozen it), 'done' once a slide is held.
+ */
+export type Progress = { fraction: number; state: 'empty' | 'playing' | 'paused' | 'done' };
+
 export class Deck {
   /** The slide on screen (index into stops), or -1 before the first: the start of the video. */
   slide = -1;
@@ -36,6 +42,40 @@ export class Deck {
     this.slide = Math.max(-1, Math.min(this.count - 1, slide));
     this.target = null;
     return { kind: 'show', t: this.at(this.slide) };
+  }
+
+  /** The step the bar stands for: the one playing, else the one that led to the slide on screen. Null before the first slide. */
+  private step(): { index: number; from: number; to: number } | null {
+    const index = this.target ?? this.slide;
+    return index < 0 ? null : { index, from: this.at(index - 1), to: this.at(index) };
+  }
+
+  /** How far the step has played at video time `t`: from the stop it started at to the stop it plays to. */
+  progress(t: number, paused = false): Progress {
+    const step = this.step();
+    if (!step) return { fraction: 0, state: 'empty' };
+    if (this.target === null) return { fraction: 1, state: 'done' };
+    const length = step.to - step.from;
+    return { fraction: length > 0 ? Math.min(1, Math.max(0, (t - step.from) / length)) : 1, state: paused ? 'paused' : 'playing' };
+  }
+
+  /**
+   * Drag the step's bar to `fraction` (0..1, clamped): the video time to show, or null before the first
+   * slide. The end is the slide arrived; anywhere before it makes the step one that is playing again, so a
+   * slide that had arrived can be scrubbed back and replayed from there.
+   */
+  scrub(fraction: number): number | null {
+    const step = this.step();
+    if (!step) return null;
+    const f = Math.min(1, Math.max(0, fraction));
+    if (f >= 1) {
+      this.slide = step.index;
+      this.target = null;
+      return step.to;
+    }
+    this.slide = step.index - 1;
+    this.target = step.index;
+    return step.from + (step.to - step.from) * f;
   }
 
   /** The slide after the one on screen (or being played to): its index, or null on the last. */

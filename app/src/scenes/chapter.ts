@@ -37,9 +37,9 @@ export default class Chapter extends Scene {
 
   render(f: Frame) {
     const g = this.g;
-    const { t, lt } = f;
+    const { ambient, lt } = f;
     const { title, subtitle } = this.ctx.params;
-    backdrop(g, t);
+    backdrop(g, ambient);
     const out = prog(lt, DUR - 0.45, DUR, ease.inCubic);
 
     // the polaroid of the section's first frame, landing on the right

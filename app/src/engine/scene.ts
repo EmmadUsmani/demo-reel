@@ -13,6 +13,12 @@ export const PH = H * SCALE;
 export type Frame = {
   /** Video time, s. */
   t: number;
+  /**
+   * A clock for motion that should keep going while a deck holds a slide (a drifting backdrop, a pulse,
+   * packets flowing). It equals t in the video, every export and still; in the player's slides mode and
+   * the presenter view it keeps advancing while a held slide's t stays on its stop (player/ambient.ts).
+   */
+  ambient: number;
   /** Time since this entry started, s. */
   lt: number;
   /** Entry progress, 0..1. */
@@ -32,7 +38,7 @@ export abstract class Scene {
   constructor(protected ctx: SceneContext) {}
   get g() { return this.ctx.g; }
   async init(): Promise<void> {}
-  /** Draw the whole frame: the output must be a pure function of f.t. */
+  /** Draw the whole frame: the output must be a pure function of f.t and f.ambient (which is f.t in the video). */
   abstract render(f: Frame): void;
   cues(): Cue[] { return []; }
   narration(): Line[] { return []; }

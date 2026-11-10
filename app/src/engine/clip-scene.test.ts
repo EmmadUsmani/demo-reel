@@ -93,7 +93,7 @@ describe('ClipScene', () => {
     await scene.init();
     return { scene, g };
   };
-  const frame = (lt: number, dur = 60 / 60 + 1): Frame => ({ t: lt + 10, lt, p: lt / dur, dur });
+  const frame = (lt: number, dur = 60 / 60 + 1): Frame => ({ t: lt + 10, ambient: lt + 10, lt, p: lt / dur, dur });
 
   test('its length is the planned playback', async () => {
     const { scene } = await make();

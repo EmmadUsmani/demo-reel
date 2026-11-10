@@ -28,14 +28,14 @@ export default class Guardrails extends Narrated {
   render(f: Frame) {
     const g = this.g;
     const lt = f.lt;
-    backdrop(g, f.t);
+    backdrop(g, f.ambient);
     heading(g, 'Guardrails', 'Enforced outside the model', prog(lt, 0.1, 0.9), 110, 140, 66);
     const core = prog(lt, 0.3, 1.0, ease.outCubic);
     g.save();
     g.globalAlpha = core;
     for (let r = 0; r < 3; r++) {
       g.beginPath();
-      g.arc(960, 600, 150 + r * 46 + Math.sin(f.t * 1.5 + r) * 3, 0, Math.PI * 2);
+      g.arc(960, 600, 150 + r * 46 + Math.sin(f.ambient * 1.5 + r) * 3, 0, Math.PI * 2);
       g.strokeStyle = withAlpha(C.accent400, 0.35 - r * 0.1);
       g.lineWidth = 3;
       g.stroke();

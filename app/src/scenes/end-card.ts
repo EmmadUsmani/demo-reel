@@ -46,16 +46,16 @@ export default class EndCard extends Scene {
 
   render(f: Frame) {
     const g = this.g;
-    const { t, lt } = f;
+    const { ambient, lt } = f;
     const { name, subtitle, pill } = this.ctx.params;
-    backdrop(g, t);
+    backdrop(g, ambient);
     const top = this.card ? 0 : -170;
 
     const k = prog(lt, 0.1, 1.0, ease.spring);
     if (this.card && k > 0) {
       g.save();
       g.globalAlpha = clamp(k * 2);
-      polaroid(g, this.card.image, this.card.crop, W / 2, 280 + Math.sin(t * 1.4) * 5 * k + 50 * (1 - k), 560 * lerp(0.7, 1, k), 0.04 * k);
+      polaroid(g, this.card.image, this.card.crop, W / 2, 280 + Math.sin(ambient * 1.4) * 5 * k + 50 * (1 - k), 560 * lerp(0.7, 1, k), 0.04 * k);
       g.restore();
     }
 
@@ -111,6 +111,6 @@ export default class EndCard extends Scene {
     g.restore();
 
     const out = prog(lt, this.dur - 0.7, this.dur, ease.inOutQuad);
-    if (out > 0) { g.save(); g.globalAlpha = out; backdrop(g, t); g.restore(); }
+    if (out > 0) { g.save(); g.globalAlpha = out; backdrop(g, ambient); g.restore(); }
   }
 }

@@ -74,7 +74,7 @@ export default class Product extends Narrated {
   render(f: Frame) {
     const { g, view } = this;
     const lt = f.lt;
-    backdrop(g, f.t);
+    backdrop(g, f.ambient);
     view.camera = cameraAt(lt, this.keys());
     const [s0, s1] = this.scroll;
     const swap = prog(lt, this.swap[0] + 0.5, this.swap[1] + 0.5, ease.inOutCubic);

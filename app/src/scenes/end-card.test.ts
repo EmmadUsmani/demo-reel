@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import EndCard from './end-card';
 import { fakeContext } from '../testing/fake-canvas';
 import { installFakeNetwork, manifestOf, routesOf } from '../testing/footage';
-import { expectPureRender, renderAt, visibleAlphas } from '../testing/scenes';
+import { expectAmbientMotion, expectPureRender, renderAt, visibleAlphas } from '../testing/scenes';
 
 let network: ReturnType<typeof installFakeNetwork> | undefined;
 afterEach(() => network?.restore());
@@ -133,5 +133,11 @@ describe('EndCard rendering', () => {
       expect(alpha).toBeGreaterThanOrEqual(previous - 1e-9);
       previous = alpha;
     }
+  });
+});
+
+describe('EndCard ambient motion', () => {
+  test('the backdrop and what bobs on it follow Frame.ambient, so a held slide keeps moving', async () => {
+    expectAmbientMotion(await make({}, true), 3, 5.4);
   });
 });

@@ -50,9 +50,9 @@ export default class TitleCard extends Scene {
 
   render(f: Frame) {
     const g = this.g;
-    const { t, lt } = f;
+    const { ambient, lt } = f;
     const { name, subtitle, kicker } = this.ctx.params;
-    backdrop(g, t);
+    backdrop(g, ambient);
     const out = prog(lt, this.exit, this.exit + 0.6, ease.inCubic);
     const hasCards = this.cards.length > 0;
     g.save();
@@ -65,7 +65,7 @@ export default class TitleCard extends Scene {
       if (!card) return; // cardLayout(0) still lays out one slot
       const k = prog(lt, CARDS_IN + i * CARD_STAGGER, CARDS_IN + i * CARD_STAGGER + 0.9, ease.spring);
       if (k <= 0) return;
-      const bob = Math.sin(t * 1.4 + x) * 5 * k;
+      const bob = Math.sin(ambient * 1.4 + x) * 5 * k;
       g.save();
       g.globalAlpha *= clamp(k * 2);
       polaroid(g, card.image, card.crop, x * lerp(0.4, 1, k), y + bob + 60 * (1 - k), width, rotation * k);

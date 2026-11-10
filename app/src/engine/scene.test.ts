@@ -46,6 +46,6 @@ describe('Scene defaults', () => {
     expect(scene.stops()).toEqual([]);
     expect(scene.duration()).toBeUndefined();
     await scene.init();
-    await scene.prepare({ t: 0, lt: 0, p: 0, dur: 1 });
+    await scene.prepare({ t: 0, ambient: 0, lt: 0, p: 0, dur: 1 });
   });
 });

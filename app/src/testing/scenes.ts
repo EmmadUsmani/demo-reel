@@ -4,11 +4,21 @@ import type { Scene } from '../engine/scene';
 import { expectCleanLog, fakeContext, range, snapshot, type FakeContext } from './fake-canvas';
 
 /** Render `scene` at scene-local time `lt` on a fresh fake context. */
-export function renderAt(scene: Scene, lt: number, dur: number, start = 7): FakeContext {
+export function renderAt(scene: Scene, lt: number, dur: number, start = 7, ambientOffset = 0): FakeContext {
   const g = fakeContext();
   (scene as any).ctx.g = g;
-  scene.render({ t: start + lt, lt, p: lt / dur, dur });
+  scene.render({ t: start + lt, ambient: start + lt + ambientOffset, lt, p: lt / dur, dur });
   return g;
+}
+
+/**
+ * A scene that opts in to Frame.ambient keeps moving on a held frame: the same time with the ambient clock
+ * ahead draws differently, and with it equal to t draws exactly what it always did.
+ */
+export function expectAmbientMotion(scene: Scene, lt: number, dur: number) {
+  const video = snapshot(renderAt(scene, lt, dur));
+  expect(snapshot(renderAt(scene, lt, dur, 7, 0))).toEqual(video);
+  expect(snapshot(renderAt(scene, lt, dur, 7, 2.5))).not.toEqual(video);
 }
 
 /**

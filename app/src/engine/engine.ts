@@ -71,24 +71,27 @@ export class Engine {
   }
 
   /** Decode what the frame at t (and its sub-frames) needs; render(t) after this resolves. */
-  async prepare(t: number, samples = 1, shutter = 0.5, fps = 60) {
+  async prepare(t: number, samples = 1, shutter = 0.5, fps = 60, ambient = t) {
     const span = samples > 1 ? shutter / fps / 2 : 0;
     const active = this.timeline.filter((e) => t + span >= e.start && t - span < e.end && this.scenes.has(e.id));
     await Promise.all(active.map((entry) => {
       const dur = entry.end - entry.start;
-      const frame = (at: number): Frame => ({ t: at, lt: at - entry.start, p: (at - entry.start) / dur, dur });
+      const frame = (at: number): Frame => ({ t: at, ambient: ambient + (at - t), lt: at - entry.start, p: (at - entry.start) / dur, dur });
       const scene = this.scenes.get(entry.id)!;
       return Promise.all([scene.prepare(frame(t)), span ? scene.prepare(frame(t - span)) : null, span ? scene.prepare(frame(t + span)) : null]);
     }));
   }
 
-  /** Draw the frame at t into the visible canvas. With samples > 1, average sub-frames over the shutter (motion blur). */
-  render(t: number, samples = 1, shutter = 0.5, fps = 60) {
-    if (samples <= 1) return this.composite(t, this.g);
+  /**
+   * Draw the frame at t into the visible canvas. With samples > 1, average sub-frames over the shutter (motion blur).
+   * `ambient` is the clock for motion that goes on while a deck holds a slide (Frame.ambient); it is t unless a player says otherwise.
+   */
+  render(t: number, samples = 1, shutter = 0.5, fps = 60, ambient = t) {
+    if (samples <= 1) return this.composite(t, this.g, ambient);
     // Running average: sub-frame k goes over the previous k at 1/(k+1), which leaves each at 1/n.
     for (let k = 0; k < samples; k++) {
       const ts = t + ((k + 0.5) / samples - 0.5) * (shutter / fps);
-      this.composite(ts, this.sub.g);
+      this.composite(ts, this.sub.g, ambient + (ts - t));
       this.g.setTransform(1, 0, 0, 1, 0, 0);
       this.g.globalAlpha = 1 / (k + 1);
       this.g.drawImage(this.sub.canvas, 0, 0);
@@ -97,7 +100,7 @@ export class Engine {
   }
 
   /** Overlapping entries crossfade: the earlier one underneath, the later one over it by its fade-in. */
-  private composite(t: number, target: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D) {
+  private composite(t: number, target: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, ambient: number) {
     const active = this.timeline.filter((e) => t >= e.start && t < e.end && this.scenes.has(e.id));
     if (active.length === 0) {
       target.setTransform(1, 0, 0, 1, 0, 0);
@@ -105,10 +108,10 @@ export class Engine {
       target.fillRect(0, 0, PW, PH);
       return;
     }
-    if (active.length === 1) return this.draw(active[0]!, t, target);
+    if (active.length === 1) return this.draw(active[0]!, t, ambient, target);
     const [a, b] = active.slice(-2) as [TimelineEntry, TimelineEntry];
-    this.draw(a, t, this.under.g);
-    this.draw(b, t, this.over.g);
+    this.draw(a, t, ambient, this.under.g);
+    this.draw(b, t, ambient, this.over.g);
     const fade = (t - b.start) / Math.max(1e-3, a.end - b.start);
     target.setTransform(1, 0, 0, 1, 0, 0);
     target.globalAlpha = 1;
@@ -118,7 +121,7 @@ export class Engine {
     target.globalAlpha = 1;
   }
 
-  private draw(entry: TimelineEntry, t: number, target: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D) {
+  private draw(entry: TimelineEntry, t: number, ambient: number, target: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D) {
     const scene = this.scenes.get(entry.id)!;
     (scene as any).ctx.g = target;
     target.setTransform(SCALE, 0, 0, SCALE, 0, 0);
@@ -129,7 +132,7 @@ export class Engine {
     target.fillStyle = '#fff';
     target.fillRect(0, 0, W, H);
     const dur = entry.end - entry.start;
-    const frame: Frame = { t, lt: t - entry.start, p: (t - entry.start) / dur, dur };
+    const frame: Frame = { t, ambient, lt: t - entry.start, p: (t - entry.start) / dur, dur };
     try {
       target.save();
       scene.render(frame);

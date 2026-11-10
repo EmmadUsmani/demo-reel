@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import TitleCard from './title-card';
 import { fakeContext, range } from '../testing/fake-canvas';
 import { installFakeNetwork, manifestOf, routesOf } from '../testing/footage';
-import { expectPureRender, renderAt, visibleAlphas } from '../testing/scenes';
+import { expectAmbientMotion, expectPureRender, renderAt, visibleAlphas } from '../testing/scenes';
 
 let network: ReturnType<typeof installFakeNetwork> | undefined;
 afterEach(() => network?.restore());
@@ -152,5 +152,11 @@ describe('TitleCard rendering', () => {
       expect(name).toBeLessThanOrEqual(previous + 1e-12);
       previous = name;
     }
+  });
+});
+
+describe('TitleCard ambient motion', () => {
+  test('the backdrop and what bobs on it follow Frame.ambient, so a held slide keeps moving', async () => {
+    expectAmbientMotion(await make({}, 2), 3, 5);
   });
 });

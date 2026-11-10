@@ -9,7 +9,7 @@ type Opts = { duration?: number; cues?: Cue[]; narration?: Line[]; notes?: Note[
 type Drawn = { id: string; frame: Frame; g: unknown };
 
 let drawn: Drawn[];
-let prepared: { id: string; t: number }[];
+let prepared: { id: string; t: number; ambient: number }[];
 let layers: ReturnType<typeof installFakeOffscreenCanvas>;
 let main: FakeContext;
 
@@ -30,7 +30,7 @@ function entry(id: string, timing: { dur?: number; overlap?: number } = {}, opts
     narration() { return opts.narration ?? []; }
     notes() { return opts.notes ?? []; }
     stops() { return opts.stops ?? []; }
-    async prepare(f: Frame) { prepared.push({ id, t: f.t }); }
+    async prepare(f: Frame) { prepared.push({ id, t: f.t, ambient: f.ambient }); }
     render(f: Frame) {
       drawn.push({ id, frame: f, g: this.g });
       this.g.fillRect(0, 0, 1, 1);
@@ -111,7 +111,7 @@ describe('drawing one scene', () => {
     engine.render(3);
     expect(drawn.length).toBe(1);
     expect(drawn[0]!.id).toBe('b');
-    expect(drawn[0]!.frame).toEqual({ t: 3, lt: 1, p: 0.25, dur: 4 });
+    expect(drawn[0]!.frame).toEqual({ t: 3, ambient: 3, lt: 1, p: 0.25, dur: 4 });
     expect(drawn[0]!.g).toBe(main);
     const [first] = main.log;
     expect(first!.op).toBe('setTransform');
@@ -175,7 +175,7 @@ describe('crossfades', () => {
     expect(drawn[1]!.g).not.toBe(main);
     expect(drawn[0]!.g).not.toBe(drawn[1]!.g);
     expect(drawn[0]!.frame.t).toBe(4.5);
-    expect(drawn[1]!.frame).toEqual({ t: 4.5, lt: 0.5, p: 0.1, dur: 5 });
+    expect(drawn[1]!.frame).toEqual({ t: 4.5, ambient: 4.5, lt: 0.5, p: 0.1, dur: 5 });
   });
 
   test('the earlier scene goes down at full alpha and the later one over it by how far into the overlap we are', async () => {
@@ -234,6 +234,37 @@ describe('crossfades', () => {
   });
 });
 
+describe('ambient time', () => {
+  test('is t unless the caller gives another clock, in a frame and in its crossfade', async () => {
+    const engine = await engineOf([entry('a', { dur: 5 }), entry('b', { dur: 5, overlap: 1 })]);
+    engine.render(4.5);
+    expect(drawn.map((d) => [d.frame.t, d.frame.ambient])).toEqual([[4.5, 4.5], [4.5, 4.5]]);
+  });
+
+  test('is the clock the caller gives while t holds, for render and prepare', async () => {
+    const engine = await engineOf([entry('a', { dur: 4 })]);
+    await engine.prepare(2, 1, 0.5, 60, 9.25);
+    engine.render(2, 1, 0.5, 60, 9.25);
+    expect(prepared).toEqual([{ id: 'a', t: 2, ambient: 9.25 }]);
+    expect(drawn[0]!.frame).toEqual({ t: 2, ambient: 9.25, lt: 2, p: 0.5, dur: 4 });
+  });
+
+  test('motion-blur sub-frames shift ambient by the same offset as t', async () => {
+    const engine = await engineOf([entry('a', { dur: 4 })]);
+    engine.render(2, 4, 0.5, 60, 10);
+    expect(drawn.map((d) => d.frame.ambient - d.frame.t).every((offset) => Math.abs(offset - 8) < 1e-9)).toBe(true);
+    drawn.length = 0;
+    engine.render(2, 4, 0.5, 60);
+    expect(drawn.every((d) => d.frame.ambient === d.frame.t)).toBe(true);
+  });
+
+  test('prepare shifts the neighbouring motion-blur frames the same way', async () => {
+    const engine = await engineOf([entry('a', { dur: 4 })]);
+    await engine.prepare(2, 4, 0.5, 60, 7);
+    expect(prepared.map((p) => p.ambient - p.t).every((d) => Math.abs(d - 5) < 1e-9)).toBe(true);
+  });
+});
+
 describe('motion blur', () => {
   test('averages sub-frames spread over the shutter, each over the running average at 1/(k+1)', async () => {
     const engine = await engineOf([entry('a', { dur: 4 })]);
@@ -267,7 +298,7 @@ describe('prepare', () => {
   test('prepares only the scenes on screen at t', async () => {
     const engine = await engineOf([entry('a', { dur: 2 }), entry('b', { dur: 2 }), entry('c', { dur: 2 })]);
     await engine.prepare(3);
-    expect(prepared).toEqual([{ id: 'b', t: 3 }]);
+    expect(prepared).toEqual([{ id: 'b', t: 3, ambient: 3 }]);
   });
 
   test('during a crossfade it prepares both', async () => {

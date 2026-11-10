@@ -7,7 +7,7 @@
 //     chips?: string[],             3–4 short phrases
 //     line?: string,                the narration (a deck has none)
 //     caption?: string,             the narration as it reads on screen, when it is respelled
-//     notes?: string,               what a presenter says on this slide (deck speaker notes, at its stop)
+//     notes?: string,               what a presenter says on this slide (deck speaker notes)
 //     card?: CardSpec,              see cards.ts
 //     dur?: number                  seconds (default 5.4)
 //   }
@@ -27,7 +27,8 @@ export default class EndCard extends Scene {
   async init() { if (this.ctx.params.card) this.card = await loadCard(this.ctx.params.card); }
   duration() { return this.dur; }
   stops() { return [this.dur - 0.7 - 1 / 60]; }
-  notes(): Note[] { return this.ctx.params.notes ? [{ at: this.stops()[0]!, text: this.ctx.params.notes }] : []; }
+  /** At the card's start, so it is on the way to the card's stop even when a crossfade into the next slide moves that stop earlier. */
+  notes(): Note[] { return this.ctx.params.notes ? [{ at: 0, text: this.ctx.params.notes }] : []; }
 
   narration(): Line[] {
     const line: string | undefined = this.ctx.params.line;

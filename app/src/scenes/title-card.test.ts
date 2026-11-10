@@ -40,12 +40,12 @@ describe('TitleCard timing', () => {
 });
 
 describe('TitleCard speaker notes', () => {
-  test('none unless it has a notes param; then one note, at its stop', async () => {
+  test('none unless it has a notes param; then one note, at the start of the card, so before its stop wherever a crossfade puts that', async () => {
     expect((await make()).notes()).toEqual([]);
     expect((await make({ notes: '' })).notes()).toEqual([]);
     for (const dur of [4, 5, 9]) {
       const scene = await make({ dur, notes: 'Say hello.' });
-      expect(scene.notes()).toEqual([{ at: scene.stops()[0]!, text: 'Say hello.' }]);
+      expect(scene.notes()).toEqual([{ at: 0, text: 'Say hello.' }]);
     }
   });
 

@@ -6,7 +6,7 @@
 //     kicker?: string,              a chip under it ("Open source", "Now live", "Coming soon")
 //     line?: string,                the narration (a deck has none)
 //     caption?: string,             the narration as it reads on screen, when it is respelled
-//     notes?: string,               what a presenter says on this slide (deck speaker notes, at its stop)
+//     notes?: string,               what a presenter says on this slide (deck speaker notes)
 //     cards?: CardSpec[],           polaroids, see cards.ts
 //     dur?: number                  seconds (default 5)
 //   }
@@ -30,7 +30,8 @@ export default class TitleCard extends Scene {
 
   duration() { return this.dur; }
   stops() { return [this.exit - 1 / 60]; }
-  notes(): Note[] { return this.ctx.params.notes ? [{ at: this.stops()[0]!, text: this.ctx.params.notes }] : []; }
+  /** At the card's start, so it is on the way to the card's stop even when a crossfade into the next slide moves that stop earlier. */
+  notes(): Note[] { return this.ctx.params.notes ? [{ at: 0, text: this.ctx.params.notes }] : []; }
 
   narration(): Line[] {
     const line: string | undefined = this.ctx.params.line;

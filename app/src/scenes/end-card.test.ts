@@ -20,12 +20,12 @@ const texts = (g: ReturnType<typeof fakeContext>) => g.calls('fillText').map((c)
 const full = { subtitle: 'open source', pill: 'Beta', chips: ['Fast', 'Small', 'Local'] };
 
 describe('EndCard speaker notes', () => {
-  test('none unless it has a notes param; then one note, at its stop', async () => {
+  test('none unless it has a notes param; then one note, at the start of the card, so before its stop wherever a crossfade puts that', async () => {
     expect((await make()).notes()).toEqual([]);
     expect((await make({ notes: '' })).notes()).toEqual([]);
     for (const dur of [4, 5.4, 8]) {
       const scene = await make({ dur, notes: 'Thank them.' });
-      expect(scene.notes()).toEqual([{ at: scene.stops()[0]!, text: 'Thank them.' }]);
+      expect(scene.notes()).toEqual([{ at: 0, text: 'Thank them.' }]);
     }
   });
 

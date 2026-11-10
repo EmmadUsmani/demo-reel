@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test';
-import { footageUrl, loadFootage } from './assets';
+import { footageUrl, loadFonts, loadFootage } from './assets';
+import { FONT_FILES } from './palette';
 import { installFakeNetwork } from '../testing/footage';
 
 describe('footageUrl', () => {
@@ -68,5 +69,33 @@ describe('loadFootage', () => {
     expect(footage.clips).toEqual({});
     expect(footage.extras).toEqual({});
     expect(footage.images).toEqual({});
+  });
+});
+
+describe('loadFonts', () => {
+  const realFontFace = (globalThis as any).FontFace, realDocument = (globalThis as any).document;
+  let network: ReturnType<typeof installFakeNetwork>;
+  let added: any[];
+  afterEach(() => { network?.restore(); (globalThis as any).FontFace = realFontFace; (globalThis as any).document = realDocument; });
+
+  const install = (routes: Record<string, unknown>) => {
+    added = [];
+    network = installFakeNetwork(routes);
+    (globalThis as any).FontFace = class { constructor(public family: string, public data: unknown, public descriptors: unknown) {} async load() { return this; } };
+    (globalThis as any).document = { fonts: { add: (face: unknown) => added.push(face) } };
+  };
+
+  test('fetches every theme font as data and adds it to the document, with its weight and style', async () => {
+    install(Object.fromEntries(FONT_FILES.map(([, url]) => [url, {}])));
+    await loadFonts();
+    expect(added.length).toBe(FONT_FILES.length);
+    expect(added.map((f) => f.family).sort()).toEqual(FONT_FILES.map(([family]) => family).sort());
+    expect(added.find((f) => f.family === 'Instrument Serif').descriptors).toEqual({ weight: '400', style: 'normal' });
+    expect(added.some((f) => f.descriptors.weight === '700')).toBe(true);
+  });
+
+  test('a font that cannot be fetched names its url and stops the load', async () => {
+    install({});
+    await expect(loadFonts()).rejects.toThrow(/HTTP 404/);
   });
 });

@@ -50,6 +50,30 @@ class Demo extends ClipScene {
   screenBox_(mark: string, key: string) { return this.screenBox(mark, key); }
 }
 
+describe('ClipScene defaults', () => {
+  let network: ReturnType<typeof installFakeNetwork>;
+  afterEach(() => network?.restore());
+  class Plain extends ClipScene {
+    protected readonly source = { footage: 'csplain', clip: 'demo', url: 'demo.dev' };
+    protected plan(player: ClipPlayer) { player.play('start', 'end'); }
+    get camera() { return this.cameraKeys(); }
+    get view_() { return this.view; }
+    address(url: string) { return this.addressOf(url); }
+    alphaAt(lt: number) { return this.pointerAlpha(lt); }
+  }
+
+  test('hold the whole window, show the pointer, and read the address as recorded', async () => {
+    network = installFakeNetwork({ 'footage/csplain/manifest.json': manifest('csplain') });
+    const scene = new Plain({ g: fakeContext(), start: 0, end: 0, params: {} });
+    await scene.init();
+    expect(scene.camera).toEqual([[0, scene.view_.wide]]);
+    expect(scene.alphaAt(1)).toBe(1);
+    expect(scene.address('https://www.demo.dev/a/')).toBe('demo.dev/a');
+    expect(scene.address('')).toBe('demo.dev');
+    expect(scene.cues().every((c) => ['click', 'key', 'wheel'].includes(c.kind))).toBe(true);
+  });
+});
+
 describe('ClipScene', () => {
   let network: ReturnType<typeof installFakeNetwork>;
   afterEach(() => network?.restore());

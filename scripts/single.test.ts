@@ -65,7 +65,7 @@ describe('singlePage', () => {
 describe('sizeWarnings', () => {
   test('warns past the artifact limit and for clips, and otherwise says nothing', () => {
     expect(sizeWarnings(ARTIFACT_LIMIT, 0)).toEqual([]);
-    expect(sizeWarnings(ARTIFACT_LIMIT + 1, 0)[0]).toContain('over the 20 MiB');
+    expect(sizeWarnings(ARTIFACT_LIMIT + 1, 0)[0]).toContain('over the 16 MiB');
     expect(sizeWarnings(100, 2)[0]).toContain('2 clips');
     expect(sizeWarnings(100, 1)[0]).toContain('1 clip:');
   });

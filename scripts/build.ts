@@ -11,7 +11,7 @@
 //                              captions.json, from out/audio-<name>/
 // --single writes ONE .html instead: the code and CSS inline, and the footage and soundtrack embedded
 // with a small fetch shim ahead of the code (scripts/single-shim.ts), so the file plays from file://, any
-// static host or a Claude artifact. It warns past 20 MiB (an artifact's limit) and for an edit with clips.
+// static host or a Claude artifact. It warns past 16 MiB (the most an artifact's page can be) and for an edit with clips.
 import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';

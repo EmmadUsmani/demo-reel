@@ -4,11 +4,11 @@ import { beforeAll, describe, expect, test } from 'bun:test';
 import { mkdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import type { Page } from 'playwright-core';
+import { ARTIFACT_LIMIT } from '../scripts/single-lib';
 import { buildSingleOf, open, presenterSettled, presenterState, ROOT, serve } from './harness';
 
 const DECK = 'news-digest-deck';
 const SHOTS = path.join(ROOT, 'out', 'shots');
-const ARTIFACT_LIMIT = 20 * 1024 * 1024;
 
 let server: Awaited<ReturnType<typeof serve>>;
 let file: string;
@@ -47,7 +47,7 @@ const coloursOf = (page: Page, selector: string) => page.evaluate((selector) => 
 const arrived = (page: Page) => page.waitForFunction(() => { const P = (window as any).__player; return P.deck.target === null && !P.playing && P.drawn === P.t; }, null, { timeout: 30_000 });
 
 describe('the pilot deck as a single file', () => {
-  test('is under a Claude artifact\'s 20 MiB file limit', () => {
+  test('fits in a Claude artifact (at most 16 MiB a page)', () => {
     expect(statSync(file).size).toBeLessThan(ARTIFACT_LIMIT);
   });
 

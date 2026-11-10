@@ -2,8 +2,8 @@
 // page is put together, and when to warn about its size. scripts/build.ts --single does the file work.
 import { installShim, type EmbeddedFiles } from './single-shim';
 
-/** A Claude artifact's per-file limit: a bigger page won't upload. */
-export const ARTIFACT_LIMIT = 20 * 1024 * 1024;
+/** The most a Claude artifact's page can be: a bigger one won't publish. */
+export const ARTIFACT_LIMIT = 16 * 1024 * 1024;
 
 const MIME: Record<string, string> = {
   png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', svg: 'image/svg+xml', webp: 'image/webp',
@@ -47,7 +47,7 @@ export function singlePage(html: string, read: (url: string) => string, files: E
 /** Warnings about a single file's size, and about clips (every frame of them would be in the file). */
 export function sizeWarnings(bytes: number, clips: number): string[] {
   const warnings: string[] = [];
-  if (bytes > ARTIFACT_LIMIT) warnings.push(`${(bytes / 1048576).toFixed(1)} MiB is over the 20 MiB a Claude artifact can hold`);
+  if (bytes > ARTIFACT_LIMIT) warnings.push(`${(bytes / 1048576).toFixed(1)} MiB is over the 16 MiB a Claude artifact's page can be`);
   if (clips) warnings.push(`the edit records ${clips} clip${clips === 1 ? '' : 's'}: every frame is embedded, and a file that size is not suited to be one page`);
   return warnings;
 }

@@ -10,18 +10,12 @@
 // reload if it is unreachable.
 import type { Page } from 'playwright-core';
 import { openApp } from './lib';
+import { analyzeJumps, frameCount, renderOptions, sheetTimes, stillName, stillTimes, videoArgs } from './render-lib';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 
-const argv = process.argv.slice(2);
-const mode = argv[0] ?? 'stills';
-const opt = (k: string, d?: string) => { const i = argv.indexOf(`--${k}`); return i >= 0 ? argv[i + 1] : d; };
-const flag = (k: string) => argv.includes(`--${k}`);
 const ROOT = path.resolve(import.meta.dir, '..');
-const SCALE = Math.max(1, Math.round(+opt('scale', '1')!));
-const OW = 1920 * SCALE, OH = 1080 * SCALE;
-const SAMPLES = +opt('samples', '1')!;
-const SHUTTER = +opt('shutter', '0.5')!;
+const { mode, scale: SCALE, width: OW, height: OH, samples: SAMPLES, shutter: SHUTTER, opt, flag } = renderOptions(process.argv.slice(2));
 
 async function png(page: Page, file: string) {
   await Bun.write(file, Buffer.from(await page.evaluate(() => (window as any).__video.png()), 'base64'));
@@ -32,7 +26,7 @@ async function stills(page: Page, times: number[], outDir: string) {
   const files: string[] = [];
   for (const t of times) {
     await page.evaluate(([t, s, sh]) => (window as any).__video.still(t, s, sh), [t, SAMPLES, SHUTTER] as const);
-    const file = path.join(outDir, `f_${t.toFixed(2).padStart(6, '0')}.png`);
+    const file = path.join(outDir, stillName(t));
     await png(page, file);
     files.push(file);
   }
@@ -68,18 +62,10 @@ async function sheet(page: Page, times: number[], cols: number, out: string) {
 async function video(page: Page, from: number, to: number, fps: number, out: string) {
   mkdirSync(path.dirname(out), { recursive: true });
   const audio = opt('audio');
-  const args = ['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgba', '-s', `${OW}x${OH}`, '-r', String(fps), '-i', 'pipe:0'];
-  if (audio) args.push('-ss', String(from), '-t', String(to - from), '-i', path.resolve(audio), '-map', '0:v', '-map', '1:a', '-c:a', 'aac', '-b:a', '256k');
-  // Frames are sRGB: convert with the BT.709 matrix and tag the stream, or players decode HD as
-  // BT.709 what ffmpeg encoded as BT.601 and every colour shifts. Tag the matrix (colorspace) too:
-  // untagged, a player that guesses BT.601 shifts every colour anyway.
-  args.push(
-    '-vf', 'scale=out_color_matrix=bt709,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709',
-    '-c:v', 'libx264', '-preset', opt('preset', 'slow')!, '-crf', opt('crf', '16')!, '-pix_fmt', 'yuv420p', '-tune', 'animation',
-    '-movflags', '+faststart', out);
+  const args = videoArgs({ width: OW, height: OH, fps, from, to, audio, preset: opt('preset'), crf: opt('crf'), out });
   const ff = Bun.spawn(args, { stdin: 'pipe', stdout: 'inherit', stderr: 'inherit' });
   let frames = 0;
-  const total = Math.round(to * fps) - Math.round(from * fps);
+  const total = frameCount(from, to, fps);
   const t0 = performance.now();
   const server = Bun.serve({
     port: 0,
@@ -109,16 +95,12 @@ async function video(page: Page, from: number, to: number, fps: number, out: str
 const { browser, page, logs, stop } = await openApp({ edit: opt('edit'), only: opt('only'), scale: SCALE, url: opt('url'), headed: flag('headed') });
 try {
   if (mode === 'stills') {
-    const times = (opt('t') ?? '0').split(',').map(Number);
+    const times = stillTimes(opt('t'));
     console.log((await stills(page, times, opt('out', path.join(ROOT, 'out/stills'))!)).join('\n'));
   } else if (mode === 'sheet') {
     const from = +opt('from', '0')!, to = +opt('to', '10')!, n = +opt('n', '12')!;
-    let times = Array.from({ length: n }, (_, i) => from + ((to - from) * i) / Math.max(1, n - 1));
-    if (opt('times')) times = opt('times')!.split(',').map(Number);
-    if (flag('cuts')) {
-      const timeline: { start: number }[] = await page.evaluate(() => (window as any).__video.timeline);
-      times = timeline.slice(1).flatMap((e) => [e.start - 0.1, e.start - 1 / 60, e.start + 1 / 60, e.start + 0.1]);
-    }
+    const timeline: { start: number }[] | undefined = flag('cuts') ? await page.evaluate(() => (window as any).__video.timeline) : undefined;
+    const times = sheetTimes({ from, to, n, times: opt('times'), cuts: timeline });
     const out = opt('out', path.join(ROOT, `out/sheets/sheet_${from}-${to}.png`))!;
     await sheet(page, times, +opt('cols', '4')!, out);
     console.log(out);
@@ -145,19 +127,11 @@ try {
       }
       return out;
     }, { from, to });
-    const flagged: string[] = [];
-    diffs.forEach((d, i) => {
-      const around = [...diffs.slice(Math.max(0, i - 6), i), ...diffs.slice(i + 1, i + 7)].sort((a, b) => a - b);
-      const typical = around[Math.floor(around.length / 2)] ?? 0;
-      if (d > 1.5 && d > 4 * typical + 0.5) flagged.push(`  ${(from + (i + 1) / 60).toFixed(3)}s  change ${d.toFixed(2)}  (neighbours ~${typical.toFixed(2)})`);
-    });
-    const sorted = [...diffs].sort((a, b) => a - b);
-    console.log(`${diffs.length} frame steps  median ${sorted[sorted.length >> 1]!.toFixed(2)}  p99 ${sorted[Math.floor(sorted.length * 0.99)]!.toFixed(2)}  max ${sorted[sorted.length - 1]!.toFixed(2)}`);
-    console.log(flagged.length ? `pops:\n${flagged.join('\n')}` : 'no pops');
+    console.log(analyzeJumps(diffs, from).join('\n'));
   } else if (mode === 'video') {
     const duration: number = await page.evaluate(() => (window as any).__video.duration);
     await video(page, +opt('from', '0')!, +opt('to', String(duration))!, +opt('fps', '60')!, path.resolve(opt('out', path.join(ROOT, `out/${opt('edit') ?? 'video'}.mp4`))!));
-  } else throw new Error(`unknown mode ${mode}`);
+  }
   if (logs.length) console.error('BROWSER LOG:\n' + logs.slice(0, 40).join('\n'));
 } finally {
   await browser.close();

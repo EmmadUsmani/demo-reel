@@ -57,3 +57,23 @@ export function installFakeOffscreenCanvas(makeContext: () => unknown) {
   };
   return { made, restore() { (globalThis as any).OffscreenCanvas = real; } };
 }
+
+/** A manifest with a plate ('hero', with a 'cta' box), and a clip ('demo', 30 frames, mark 'end' at frame 29). */
+export function manifestOf(over: Record<string, unknown> = {}) {
+  return {
+    dpr: 2,
+    viewport: { width: 1440, height: 900 },
+    shots: { hero: { file: 'hero.png', w: 1440, h: 900, scrollY: 0, boxes: { cta: { x: 100, y: 200, w: 300, h: 100 } } } },
+    clips: { demo: clip(30, { marks: { end: { frame: 29, scrollY: 50, boxes: { cta: { x: 100, y: 250, w: 300, h: 100 } } } } }) },
+    ...over,
+  };
+}
+
+/** Everything manifestOf() names, as routes for installFakeNetwork, under footage/<name>/. */
+export function routesOf(name: string, manifest: ReturnType<typeof manifestOf> = manifestOf()) {
+  const routes: Record<string, unknown> = { [`footage/${name}/manifest.json`]: manifest, [`footage/${name}/hero.png`]: { blob: 'hero' } };
+  for (const c of Object.values(manifest.clips as Record<string, { dir: string; frames: { file: string }[] }>)) {
+    for (const f of c.frames) routes[`footage/${name}/${c.dir}/${f.file}`] = { blob: `${c.dir}/${f.file}` };
+  }
+  return routes;
+}

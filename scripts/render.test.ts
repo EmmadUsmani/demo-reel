@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import path from 'node:path';
+import { RATE as AUDIO_RATE, writeWav } from './audio-lib';
+import { ffmpegTest, tempDir } from './test-support';
 import { analyzeJumps, frameCount, renderOptions, sheetTimes, stillName, stillTimes, videoArgs, videoRange } from './render-lib';
 
 const ROOT = path.resolve(import.meta.dir, '..');
@@ -193,6 +195,65 @@ describe('videoArgs', () => {
     expect(args.slice(second - 4, second + 2)).toEqual(['-ss', '2.5', '-t', '4.5', '-i', path.resolve('out/audio-x/mix.wav')]);
     expect(args.slice(second + 2, second + 10)).toEqual(['-map', '0:v', '-map', '1:a', '-c:a', 'aac', '-b:a', '256k']);
     expect(args.indexOf('-vf')).toBeGreaterThan(second); // the trim applies to the audio input, not the frames
+  });
+});
+
+describe('videoArgs against a real ffmpeg', () => {
+  const W = 64, H = 36;
+  /** n frames of one flat sRGB colour, as raw RGBA. */
+  const frames = (n: number, [r, g, b]: number[]) => { const frame = new Uint8Array(W * H * 4); for (let i = 0; i < W * H; i++) frame.set([r!, g!, b!, 255], i * 4); return Buffer.concat(Array.from({ length: n }, () => frame)); };
+  const probe = (file: string, stream: string, entries: string) => {
+    const out = Bun.spawnSync(['ffprobe', '-v', 'error', '-select_streams', stream, '-show_entries', `stream=${entries}`, '-of', 'json', file]);
+    return JSON.parse(out.stdout.toString()).streams[0] as Record<string, string | number>;
+  };
+  const encode = (args: string[], data: Buffer) => {
+    const run = Bun.spawnSync(args, { stdin: data });
+    if (run.exitCode !== 0) throw new Error(`ffmpeg: ${run.stderr}`);
+  };
+
+  ffmpegTest('encodes the frames it is fed as H.264 yuv420p at the frame rate, tagged BT.709', () => {
+    const tmp = tempDir();
+    try {
+      const out = path.join(tmp.dir, 'v.mp4');
+      encode(videoArgs({ width: W, height: H, fps: 30, from: 0, to: 1, preset: 'veryfast', out }), frames(30, [200, 50, 50]));
+      expect(probe(out, 'v:0', 'codec_name,width,height,r_frame_rate,pix_fmt,nb_read_frames,color_space,color_primaries,color_transfer')).toMatchObject({
+        codec_name: 'h264', width: W, height: H, r_frame_rate: '30/1', pix_fmt: 'yuv420p', color_space: 'bt709', color_primaries: 'bt709', color_transfer: 'bt709',
+      });
+      expect(Number(probe(out, 'v:0', 'duration').duration)).toBeCloseTo(1, 1);
+    } finally {
+      tmp.remove();
+    }
+  });
+
+  ffmpegTest('converts colour with the BT.709 matrix: a decoder that reads the tag gets the sRGB colour back', () => {
+    const tmp = tempDir();
+    try {
+      const out = path.join(tmp.dir, 'v.mp4');
+      encode(videoArgs({ width: W, height: H, fps: 30, from: 0, to: 0.5, preset: 'veryfast', crf: '10', out }), frames(15, [200, 50, 50]));
+      const decoded = Bun.spawnSync(['ffmpeg', '-v', 'error', '-i', out, '-vf', 'scale=in_color_matrix=bt709', '-frames:v', '1', '-pix_fmt', 'rgb24', '-f', 'rawvideo', '-']).stdout;
+      const middle = (H / 2) * W * 3 + (W / 2) * 3;
+      const [r, g, b] = [decoded[middle]!, decoded[middle + 1]!, decoded[middle + 2]!];
+      expect(Math.abs(r - 200)).toBeLessThanOrEqual(4);
+      expect(Math.abs(g - 50)).toBeLessThanOrEqual(4);
+      expect(Math.abs(b - 50)).toBeLessThanOrEqual(4);
+    } finally {
+      tmp.remove();
+    }
+  });
+
+  ffmpegTest('with audio, takes the soundtrack from the same range as the frames, as AAC', async () => {
+    const tmp = tempDir();
+    try {
+      const wav = path.join(tmp.dir, 'mix.wav'), out = path.join(tmp.dir, 'v.mp4');
+      const tone = Float32Array.from({ length: AUDIO_RATE * 4 }, (_, i) => 0.3 * Math.sin((2 * Math.PI * 440 * i) / AUDIO_RATE));
+      await Bun.write(wav, writeWav([tone, tone], AUDIO_RATE));
+      encode(videoArgs({ width: W, height: H, fps: 30, from: 1, to: 2.5, audio: wav, preset: 'veryfast', out }), frames(45, [10, 120, 200]));
+      expect(probe(out, 'a:0', 'codec_name,sample_rate,channels')).toMatchObject({ codec_name: 'aac', sample_rate: '48000', channels: 2 });
+      expect(Number(probe(out, 'a:0', 'duration').duration)).toBeCloseTo(1.5, 1);
+      expect(Number(probe(out, 'v:0', 'duration').duration)).toBeCloseTo(1.5, 1);
+    } finally {
+      tmp.remove();
+    }
   });
 });
 

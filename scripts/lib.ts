@@ -1,6 +1,7 @@
 // Boots the video app in headless Chrome for the offline tools (render.ts, audio.ts).
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dir, '..');
@@ -57,6 +58,7 @@ export function chromeArgs(platform: string = process.platform) {
 }
 
 export async function openApp({ edit, only, scale = 1, url, headed = false }: { edit?: string; only?: string; scale?: number; url?: string; headed?: boolean } = {}) {
+  if (edit && !existsSync(path.join(ROOT, 'projects', edit, 'timeline.ts'))) throw new Error(`no project '${edit}' (projects/${edit}/timeline.ts)`);
   const server = await ensureServer(url);
   const browser = await chromium.launch({ channel: 'chrome', headless: !headed, args: chromeArgs() });
   try {

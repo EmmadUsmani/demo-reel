@@ -183,4 +183,11 @@ describe('openApp', () => {
       app.stop();
     }
   });
+
+  test("refuses an edit that isn't a project at once, before starting anything", async () => {
+    const started = performance.now();
+    await expect(openApp({ edit: 'no-such-edit' })).rejects.toThrow("no project 'no-such-edit' (projects/no-such-edit/timeline.ts)");
+    expect(performance.now() - started).toBeLessThan(1000);
+    expect(chromeChildren()).toEqual([]);
+  });
 });

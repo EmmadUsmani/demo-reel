@@ -6,7 +6,7 @@
     "dev": "vite",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "bun test app projects scripts",
-    "test:e2e": "bun test ./e2e/player.e2e.ts ./e2e/slides.e2e.ts ./e2e/export.e2e.ts --timeout 300000"
+    "test:e2e": "bun test ./e2e/all.e2e.ts --timeout 300000"
   },
   "dependencies": {
     "@fontsource/instrument-serif": "^5.3.0",

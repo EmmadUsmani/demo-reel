@@ -161,7 +161,7 @@ bunx vite preview --outDir $PWD/out/web-news-digest --port 5190
 - **Keys:** space or `k` play/pause, ←/→ ±5 s (shift: one frame), `n` narration, `c` captions, `m` mute, `f` full screen, `v` slides. In slides: →/space/Enter forward, ← back, Home/End, `s` notes. URL: `?t=<s>`, `?captions=1`, `?narration=0`.
 - **Hosts with strict rules** (a Claude artifact: media and fonts only from data, only a `#name` passed to the page): fonts load as fetched data; a track the page may not stream is fetched and played from memory (it loads whole first); `#slides`, `#slide-<n>` and `#scene-<id>` stand in for the query. The Share box's links point at wherever the page itself is served, which inside an artifact's frame isn't the claude.ai link.
 - **Size:** a slide-led edit is small (news-digest: about 19 MB, most of it plates and sound). Edits built on recorded clips ship every PNG frame and are hundreds of MB: fine on your own host, too big for most others until clips are encoded as video.
-- **Tests:** unit (`bun run test`): `player/clock.test.ts`, `player/deck.test.ts`, `engine/stops.test.ts`. Browser (`bun run test:e2e`): `e2e/player.e2e.ts` and `e2e/slides.e2e.ts` drive the built player in headless Chrome; `e2e/export.e2e.ts` checks the static slides.
+- **Tests:** unit (`bun run test`): `player/clock.test.ts`, `player/deck.test.ts`, `engine/stops.test.ts`. Browser (`bun run test:e2e`, which runs `e2e/all.e2e.ts`): `e2e/player.e2e.ts` and `e2e/slides.e2e.ts` drive the built player in headless Chrome; `e2e/export.e2e.ts` checks the static slides.
 
 ## Static slides
 

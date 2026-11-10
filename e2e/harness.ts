@@ -4,32 +4,32 @@
 import { chromium, type Browser, type Page } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { freePort } from '../scripts/lib';
+import { freePort, startVite } from '../scripts/lib';
 
 export const ROOT = path.resolve(import.meta.dir, '..');
 export const EDIT = process.env.E2E_EDIT ?? 'news-digest';
 export const OUT = path.join(ROOT, 'out', `e2e-web-${EDIT}`);
 
-/** One build, server and browser for every test file in the run; they stop when the run ends. */
-let served: Promise<{ url: string; browser: Browser }> | undefined;
+/** One build, server and browser for every suite in the run (e2e/all.e2e.ts stops them at the end). */
+let served: Promise<{ url: string; browser: Browser; stop: () => Promise<void> }> | undefined;
 export function serve() { return (served ??= start()); }
+export async function stopServing() { await (await served)?.stop(); }
 
-async function start(): Promise<{ url: string; browser: Browser }> {
+async function start(): Promise<{ url: string; browser: Browser; stop: () => Promise<void> }> {
   for (const need of [`projects/${EDIT}/footage/manifest.json`, `out/audio-${EDIT}/mix.wav`, `out/audio-${EDIT}/effects.wav`, `out/audio-${EDIT}/captions.json`]) {
     if (!existsSync(path.join(ROOT, need))) throw new Error(`${need} is missing: capture the footage and run bun scripts/audio.ts --edit ${EDIT} first`);
   }
   const build = Bun.spawnSync(['bun', 'scripts/build.ts', '--edit', EDIT, '--out', OUT], { cwd: ROOT, stderr: 'pipe' });
   if (build.exitCode !== 0) throw new Error(`build failed:\n${build.stderr}`);
   const port = freePort();
-  const server = Bun.spawn(['bunx', 'vite', 'preview', '--outDir', OUT, '--port', String(port), '--strictPort'], { cwd: ROOT, stdout: 'ignore', stderr: 'ignore' });
+  const stopServer = startVite(['preview', '--outDir', OUT, '--port', String(port), '--strictPort']);
   const url = `http://localhost:${port}/`;
   for (let i = 0; i < 100; i++) {
     try { if ((await fetch(url)).ok) break; } catch { /* not up yet */ }
     await Bun.sleep(100);
   }
   const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--autoplay-policy=no-user-gesture-required'] });
-  process.on('exit', () => server.kill());
-  return { url, browser };
+  return { url, browser, stop: async () => { await browser.close(); stopServer(); } };
 }
 
 /** A page on the player, with every error, failed request and console error collected in `problems`. */

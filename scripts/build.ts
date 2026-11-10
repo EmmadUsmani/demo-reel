@@ -9,6 +9,7 @@
 //                              captions.json, from out/audio-<name>/
 import { cpSync, existsSync, mkdirSync, readdirSync, renameSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { VITE } from './lib';
 
 const argv = process.argv.slice(2);
 const opt = (k: string, d?: string) => { const i = argv.indexOf(`--${k}`); return i >= 0 ? argv[i + 1] : d; };
@@ -28,7 +29,7 @@ async function run(cmd: string[], env: Record<string, string> = {}) {
 }
 
 // ------------------------------------------------------------------ the code
-await run(['bunx', 'vite', 'build', '--outDir', OUT, '--emptyOutDir'], { DEMO_REEL_EDIT: EDIT, NODE_ENV: 'production' });
+await run([VITE, 'build', '--outDir', OUT, '--emptyOutDir'], { DEMO_REEL_EDIT: EDIT, NODE_ENV: 'production' });
 renameSync(path.join(OUT, 'player.html'), path.join(OUT, 'index.html'));
 
 // ------------------------------------------------------------------ the footage the manifest uses
@@ -68,4 +69,4 @@ function size(dir: string): number {
 }
 const mb = (dir: string) => (existsSync(dir) ? `${(size(dir) / 1e6).toFixed(1)} MB` : '—');
 console.log(`player for ${EDIT}: ${OUT}  (${mb(OUT)}: code ${mb(path.join(OUT, 'assets'))}, footage ${mb(footageOut)}, audio ${mb(audioOut)})`);
-console.log(`serve the folder over HTTP to watch it, e.g.  bunx vite preview --outDir ${path.relative(ROOT, OUT)} --port 5190`);
+console.log(`serve the folder over HTTP to watch it, e.g.  bunx vite preview --outDir ${OUT} --port 5190`);

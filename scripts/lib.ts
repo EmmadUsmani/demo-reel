@@ -1,8 +1,21 @@
 // Boots the video app in headless Chrome for the offline tools (render.ts, audio.ts).
 import { chromium } from 'playwright-core';
+import { spawn } from 'node:child_process';
 import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dir, '..');
+export const VITE = path.join(ROOT, 'node_modules/.bin/vite');
+
+/**
+ * Start a Vite server (args after `vite`); the function returned stops it. It runs in a process group
+ * of its own, and stopping ends the whole group: `bunx` and node version-manager shims run the real
+ * server as a child of the process we start, which outlived a plain kill (every render used to leave
+ * a server running).
+ */
+export function startVite(args: string[], env: Record<string, string> = {}) {
+  const proc = spawn(VITE, args, { cwd: ROOT, stdio: 'ignore', detached: true, env: { ...process.env, ...env } });
+  return () => { try { process.kill(-proc.pid!, 'SIGTERM'); } catch { /* already gone */ } };
+}
 
 /** A port nothing is listening on: the system picks it, so two servers started at once can't collide. */
 export function freePort() {
@@ -20,10 +33,10 @@ async function reachable(url: string) {
 async function ensureServer(url = 'http://localhost:5180'): Promise<{ url: string; stop: () => void }> {
   if (await reachable(url)) return { url, stop: () => {} };
   const port = freePort();
-  const proc = Bun.spawn(['bunx', 'vite', '--port', String(port), '--strictPort'], { cwd: ROOT, stdout: 'ignore', stderr: 'ignore', env: { ...process.env, DEMO_REEL_NO_HMR: '1' } });
+  const stop = startVite(['--port', String(port), '--strictPort'], { DEMO_REEL_NO_HMR: '1' });
   const u = `http://localhost:${port}`;
   for (let i = 0; i < 150 && !(await reachable(u)); i++) await Bun.sleep(100);
-  return { url: u, stop: () => proc.kill() };
+  return { url: u, stop };
 }
 
 export async function openApp({ edit, only, scale = 1, url, headed = false }: { edit?: string; only?: string; scale?: number; url?: string; headed?: boolean } = {}) {

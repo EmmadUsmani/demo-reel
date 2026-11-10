@@ -19,6 +19,10 @@ export default class Guardrails extends Narrated {
   protected hold = { f10a: 2.6 };
 
   private fenceAt(i: number) { return this.at('f10a', [0.3, 0.62, 0.8, 0.95][i]!); }
+  /** When fence `i` has fully landed. */
+  private fenceUp(i: number) { return this.fenceAt(i) + 0.5; }
+  /** The last fence lands later in its beat than kit's usual stop (STOP_LEAD before the end): stop once it is up. */
+  stops() { return [this.fenceUp(FENCES.length - 1)]; }
   cues(): Cue[] { return [{ kind: 'land', t: 0.5, gain: 0.6 }, ...pops(FENCES.map((_, i) => this.fenceAt(i)))]; }
 
   render(f: Frame) {
@@ -42,6 +46,6 @@ export default class Guardrails extends Narrated {
     g.fill();
     text(g, 'Codex', 960, 612, { px: 48, weight: 700, color: C.white, align: 'center', family: 'sans' });
     g.restore();
-    FENCES.forEach(([x, y, title, sub], i) => node(g, x, y, 580, 140, title, prog(lt, this.fenceAt(i) - 0.2, this.fenceAt(i) + 0.5), { sub, tone: i === 3 ? 'owner' : i === 2 ? 'bad' : 'ok', px: 32, subPx: 24 }));
+    FENCES.forEach(([x, y, title, sub], i) => node(g, x, y, 580, 140, title, prog(lt, this.fenceAt(i) - 0.2, this.fenceUp(i)), { sub, tone: i === 3 ? 'owner' : i === 2 ? 'bad' : 'ok', px: 32, subPx: 24 }));
   }
 }

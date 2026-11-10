@@ -37,6 +37,21 @@ describe('keyboard: video', () => {
     await page.close();
   }, 60_000);
 
+  test('pausing and playing again at once keeps playing: the sound\'s own pause is not a pause from outside', async () => {
+    const { page } = await open(server.browser, `${server.url}?t=60`);
+    await page.keyboard.press(' ');
+    await until(page, (P) => P.playing && P.t > 60.3);
+    // in one task, as a double tap of the key can be: the audio's pause event arrives after the video plays again
+    await page.evaluate(() => { const P = (window as any).__player; P.pause(); P.play(); });
+    const t = (await state(page)).t;
+    await page.waitForTimeout(800); // long enough for a wrong pause to have happened
+    await page.waitForFunction((t) => (window as any).__player.t > t + 0.5, t, { timeout: 5000 });
+    const s = await state(page);
+    expect(s.playing).toBe(true);
+    expect(s.audioPaused).toBe(false);
+    await page.close();
+  }, 60_000);
+
   test('clicking the picture plays and pauses too', async () => {
     const { page } = await open(server.browser, `${server.url}?t=60`);
     await page.click('.big'); // before the first play, the Play button covers the picture
@@ -380,6 +395,17 @@ describe('captions', () => {
       expect(written).toContain((await state(page)).caption!);
     }
     expect(written.some((text) => /\b(?:[A-Z]\.){2,}/.test(text))).toBe(false);
+    await page.close();
+  }, 60_000);
+
+  test('pausing straight after the first play still shows the caption of the held frame', async () => {
+    const line = captions[Math.floor(captions.length / 2)]!;
+    const mid = (line.at + line.end) / 2;
+    const { page } = await open(server.browser, `${server.url}?captions=1&t=${mid}`);
+    await page.keyboard.press(' ');
+    await page.keyboard.press('k'); // before the sound has moved the clock
+    await until(page, (P) => !P.playing);
+    await shown(page, line.text);
     await page.close();
   }, 60_000);
 

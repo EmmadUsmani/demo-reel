@@ -19,6 +19,21 @@ async function make(params: Record<string, unknown> = {}, withCard = false) {
 const texts = (g: ReturnType<typeof fakeContext>) => g.calls('fillText').map((c) => c.args[0]);
 const full = { subtitle: 'open source', pill: 'Beta', chips: ['Fast', 'Small', 'Local'] };
 
+describe('EndCard speaker notes', () => {
+  test('none unless it has a notes param; then one note, at its stop', async () => {
+    expect((await make()).notes()).toEqual([]);
+    expect((await make({ notes: '' })).notes()).toEqual([]);
+    for (const dur of [4, 5.4, 8]) {
+      const scene = await make({ dur, notes: 'Thank them.' });
+      expect(scene.notes()).toEqual([{ at: scene.stops()[0]!, text: 'Thank them.' }]);
+    }
+  });
+
+  test('a deck card needs no line: notes without one leave the narration empty', async () => {
+    expect((await make({ line: undefined, notes: 'Thank them.' })).narration()).toEqual([]);
+  });
+});
+
 describe('EndCard timing and sound', () => {
   test('runs 5.4 s unless told otherwise', async () => {
     expect((await make()).duration()).toBe(5.4);

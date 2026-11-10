@@ -19,6 +19,15 @@ async function make(withStill = false, params: Record<string, unknown> = {}) {
 }
 const texts = (g: ReturnType<typeof fakeContext>) => g.calls('fillText').map((c) => c.args[0]);
 
+describe('Chapter speaker notes', () => {
+  test('none unless it has a notes param; then one note, at its stop', async () => {
+    expect((await make()).scene.notes()).toEqual([]);
+    const { scene } = await make(false, { notes: 'Introduce the factory.' });
+    expect(scene.notes()).toEqual([{ at: scene.stops()[0]!, text: 'Introduce the factory.' }]);
+    expect(scene.narration()).toEqual([]);
+  });
+});
+
 describe('Chapter timing and sound', () => {
   test('is 2.6 s long whatever the params say', async () => {
     expect((await make()).scene.duration()).toBe(DUR);

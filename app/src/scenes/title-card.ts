@@ -4,14 +4,15 @@
 //     name: string,                 the product or feature, big
 //     subtitle?: string,            one line of what it is
 //     kicker?: string,              a chip under it ("Open source", "Now live", "Coming soon")
-//     line: string,                 the narration
+//     line?: string,                the narration (a deck has none)
 //     caption?: string,             the narration as it reads on screen, when it is respelled
+//     notes?: string,               what a presenter says on this slide (deck speaker notes, at its stop)
 //     cards?: CardSpec[],           polaroids, see cards.ts
 //     dur?: number                  seconds (default 5)
 //   }
 import { backdrop, chip, polaroid } from '../engine/draw';
 import { C, font } from '../engine/palette';
-import { Scene, W, type Cue, type Frame, type Line } from '../engine/scene';
+import { Scene, W, type Cue, type Frame, type Line, type Note } from '../engine/scene';
 import { clamp, ease, lerp, prog } from '../engine/util';
 import { cardLayout, loadCard, type Card, type CardSpec } from './cards';
 
@@ -29,6 +30,7 @@ export default class TitleCard extends Scene {
 
   duration() { return this.dur; }
   stops() { return [this.exit - 1 / 60]; }
+  notes(): Note[] { return this.ctx.params.notes ? [{ at: this.stops()[0]!, text: this.ctx.params.notes }] : []; }
 
   narration(): Line[] {
     const line: string | undefined = this.ctx.params.line;

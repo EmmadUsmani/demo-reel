@@ -39,6 +39,22 @@ describe('TitleCard timing', () => {
   });
 });
 
+describe('TitleCard speaker notes', () => {
+  test('none unless it has a notes param; then one note, at its stop', async () => {
+    expect((await make()).notes()).toEqual([]);
+    expect((await make({ notes: '' })).notes()).toEqual([]);
+    for (const dur of [4, 5, 9]) {
+      const scene = await make({ dur, notes: 'Say hello.' });
+      expect(scene.notes()).toEqual([{ at: scene.stops()[0]!, text: 'Say hello.' }]);
+    }
+  });
+
+  test('a deck card needs no narration line, and notes do not become narration', async () => {
+    const scene = await make({ notes: 'Say hello.' });
+    expect(scene.narration()).toEqual([]);
+  });
+});
+
 describe('TitleCard sounds', () => {
   test('a swish per card, panned toward where it lands, then the chime, then a whoosh out at the exit', async () => {
     const scene = await make({ dur: 5 }, 3);

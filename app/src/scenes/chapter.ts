@@ -1,11 +1,12 @@
 // A chapter card between sections: the title in the display face, a line of what the
 // section shows, and a polaroid of the section's own first frame, taped on.
-//   params: { title, subtitle, still: { footage, clip, frame } }
+//   params: { title, subtitle, notes?, still: { footage, clip, frame } }
+//   notes: what a presenter says on this slide (deck speaker notes, at its stop)
 import { loadFootage } from '../engine/assets';
 import { ClipPlayer } from '../engine/clip';
 import { backdrop, roundRect } from '../engine/draw';
 import { C, font, shadow } from '../engine/palette';
-import { H, Scene, W, type Cue, type Frame } from '../engine/scene';
+import { H, Scene, W, type Cue, type Frame, type Note } from '../engine/scene';
 import { clamp, ease, lerp, prog } from '../engine/util';
 
 const DUR = 2.6;
@@ -23,6 +24,7 @@ export default class Chapter extends Scene {
 
   duration() { return DUR; }
   stops() { return [DUR - 0.45 - 1 / 60]; }
+  notes(): Note[] { return this.ctx.params.notes ? [{ at: this.stops()[0]!, text: this.ctx.params.notes }] : []; }
   async prepare(f: Frame) { await this.player?.prepare(f.lt); }
 
   cues(): Cue[] {

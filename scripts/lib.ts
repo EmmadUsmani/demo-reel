@@ -4,6 +4,14 @@ import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 
+/** A port nothing is listening on: the system picks it, so two servers started at once can't collide. */
+export function freePort() {
+  const probe = Bun.serve({ port: 0, fetch: () => new Response() });
+  const port = probe.port!;
+  probe.stop(true);
+  return port;
+}
+
 async function reachable(url: string) {
   try { return (await fetch(url, { signal: AbortSignal.timeout(1500) })).ok; } catch { return false; }
 }
@@ -11,7 +19,7 @@ async function reachable(url: string) {
 /** The Vite server at `url` (default :5180), or a private one without live reload if that is down. */
 async function ensureServer(url = 'http://localhost:5180'): Promise<{ url: string; stop: () => void }> {
   if (await reachable(url)) return { url, stop: () => {} };
-  const port = 5400 + Math.floor(Math.random() * 400);
+  const port = freePort();
   const proc = Bun.spawn(['bunx', 'vite', '--port', String(port), '--strictPort'], { cwd: ROOT, stdout: 'ignore', stderr: 'ignore', env: { ...process.env, DEMO_REEL_NO_HMR: '1' } });
   const u = `http://localhost:${port}`;
   for (let i = 0; i < 150 && !(await reachable(u)); i++) await Bun.sleep(100);

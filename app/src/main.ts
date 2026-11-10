@@ -12,6 +12,7 @@ const EDIT = params.get('edit') ?? Object.keys(EDITS)[0]!;
 const edit = EDITS[EDIT];
 if (!edit) throw new Error(`no edit '${EDIT}' (edits: ${Object.keys(EDITS).join(', ')})`);
 applyTheme(edit.theme);
+const TITLE = edit.title ?? EDIT;
 document.title = `${EDIT} — demo-reel`;
 const FROM = params.get('t') ? parseFloat(params.get('t')!) : null;
 
@@ -35,6 +36,7 @@ function setupExport() {
   document.body.classList.add('export');
   window.__video = {
     engine,
+    title: TITLE,
     duration: engine.duration,
     errors: engine.errors,
     scale: SCALE,

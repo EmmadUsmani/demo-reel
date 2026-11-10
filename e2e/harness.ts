@@ -4,6 +4,7 @@
 import { chromium, type Browser, type Page } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { freePort } from '../scripts/lib';
 
 export const ROOT = path.resolve(import.meta.dir, '..');
 export const EDIT = process.env.E2E_EDIT ?? 'news-digest';
@@ -19,7 +20,7 @@ async function start(): Promise<{ url: string; browser: Browser }> {
   }
   const build = Bun.spawnSync(['bun', 'scripts/build.ts', '--edit', EDIT, '--out', OUT], { cwd: ROOT, stderr: 'pipe' });
   if (build.exitCode !== 0) throw new Error(`build failed:\n${build.stderr}`);
-  const port = 5600 + Math.floor(Math.random() * 300);
+  const port = freePort();
   const server = Bun.spawn(['bunx', 'vite', 'preview', '--outDir', OUT, '--port', String(port), '--strictPort'], { cwd: ROOT, stdout: 'ignore', stderr: 'ignore' });
   const url = `http://localhost:${port}/`;
   for (let i = 0; i < 100; i++) {

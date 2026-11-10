@@ -160,7 +160,18 @@ bunx vite preview --outDir $PWD/out/web-news-digest --port 5190
 - **Embeds:** `?scene=<id>` loads and plays that one entry: its range, its stops, its stretch of the soundtrack. Share (in the controls) gives links to the moment and the slide, and an `<iframe>` for the scene on screen.
 - **Keys:** space or `k` play/pause, ←/→ ±5 s (shift: one frame), `n` narration, `c` captions, `m` mute, `f` full screen, `v` slides. In slides: →/space/Enter forward, ← back, Home/End, `s` notes. URL: `?t=<s>`, `?captions=1`, `?narration=0`.
 - **Size:** a slide-led edit is small (news-digest: about 19 MB, most of it plates and sound). Edits built on recorded clips ship every PNG frame and are hundreds of MB: fine on your own host, too big for most others until clips are encoded as video.
-- **Tests:** unit (`bun run test`): `player/clock.test.ts`, `player/deck.test.ts`, `engine/stops.test.ts`. Browser (`bun run test:e2e`): `e2e/player.e2e.ts` and `e2e/slides.e2e.ts` drive the built player in headless Chrome.
+- **Tests:** unit (`bun run test`): `player/clock.test.ts`, `player/deck.test.ts`, `engine/stops.test.ts`. Browser (`bun run test:e2e`): `e2e/player.e2e.ts` and `e2e/slides.e2e.ts` drive the built player in headless Chrome; `e2e/export.e2e.ts` checks the static slides.
+
+## Static slides
+
+```sh
+bun scripts/slides.ts --edit news-digest      # → out/slides-news-digest/: index.html, deck.pdf, deck.pptx, slides/*.jpg, slides.json
+```
+
+- **A still at every stop**, 1920×1080 JPEG, with the narration said on the way to it as speaker notes (the written captions from `audio.ts`, so run it first; without them, each line's `caption` or `text`).
+- **Build steps fold:** a stop whose content the next stop in its scene keeps (it only adds a label, a node, a line on a chart) is folded into it, notes and all (`scripts/slides-plan.ts`: under 10% of its content changes). news-digest's 73 stops make 56 slides. `--builds` keeps every stop; `--threshold` moves the line.
+- **Formats:** `index.html` is a deck that needs only its images (←/→, `s` notes, `#n` links) and prints one slide a page; `deck.pdf` is printed from it; `deck.pptx` (pptxgenjs) carries the notes, and Keynote and Google Slides open it. The slides are pictures: their text can't be edited.
+- **Tests:** `scripts/slides-plan.test.ts`; `e2e/export.e2e.ts` runs the script and checks the stills, every narration line landing on one slide, the PDF's pages, the PowerPoint's notes and the HTML deck's paging.
 
 ## Toolbox
 

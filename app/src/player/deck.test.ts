@@ -47,4 +47,97 @@ describe('Deck', () => {
     deck.sync(10);
     expect(deck.slide).toBe(1);
   });
+
+  test('an empty deck has no slides: nothing moves, and every slide is the start', () => {
+    const deck = new Deck([], 3);
+    expect(deck.count).toBe(0);
+    expect(deck.next()).toBeNull();
+    expect(deck.prev()).toBeNull();
+    expect(deck.go(0)).toEqual({ kind: 'show', t: 3 });
+    expect(deck.slide).toBe(-1);
+    deck.sync(50);
+    expect(deck.slide).toBe(-1);
+    expect(deck.arrive(50)).toBe(false);
+  });
+
+  test('a single slide: forward plays to it, then does nothing; back returns to the start', () => {
+    const deck = new Deck([8], 0);
+    expect(deck.next()).toEqual({ kind: 'play', from: 0, to: 8 });
+    expect(deck.arrive(8)).toBe(true);
+    expect(deck.next()).toBeNull();
+    expect(deck.prev()).toEqual({ kind: 'show', t: 0 });
+    expect(deck.slide).toBe(-1);
+  });
+
+  test('go below the start clamps to the start; the start of a scene embed is its own start, not 0', () => {
+    const deck = new Deck([30, 40], 20);
+    expect(deck.go(-7)).toEqual({ kind: 'show', t: 20 });
+    expect(deck.slide).toBe(-1);
+    expect(deck.next()).toEqual({ kind: 'play', from: 20, to: 30 });
+  });
+
+  test('go in the middle of a step cancels it', () => {
+    const deck = new Deck([5, 10, 15], 0);
+    deck.next();
+    expect(deck.target).toBe(0);
+    expect(deck.go(2)).toEqual({ kind: 'show', t: 15 });
+    expect(deck.target).toBeNull();
+    expect(deck.arrive(99)).toBe(false);
+  });
+
+  test('back during the very first step returns to the start', () => {
+    const deck = new Deck([5, 10], 0);
+    deck.next();
+    expect(deck.prev()).toEqual({ kind: 'show', t: 0 });
+    expect(deck.slide).toBe(-1);
+    expect(deck.target).toBeNull();
+  });
+
+  test('arrive holds only once the step reaches its stop, and a late report still counts', () => {
+    const deck = new Deck([5, 10], 0);
+    expect(deck.arrive(5)).toBe(false); // no step is playing
+    deck.next();
+    expect(deck.arrive(4.999)).toBe(false);
+    expect(deck.slide).toBe(-1);
+    expect(deck.arrive(5.4)).toBe(true); // the frame that crossed the stop
+    expect(deck.slide).toBe(0);
+    expect(deck.arrive(10)).toBe(false); // already arrived
+  });
+
+  test('forward after finishing a step plays the next one', () => {
+    const deck = new Deck([5, 10, 15], 0);
+    deck.next();
+    deck.next(); // finishes: show 5
+    expect(deck.next()).toEqual({ kind: 'play', from: 5, to: 10 });
+    expect(deck.target).toBe(1);
+  });
+
+  test('sync across slide boundaries: on a stop is that slide, a hair before is the one before', () => {
+    const deck = new Deck([5, 10, 15], 0);
+    deck.sync(5);
+    expect(deck.slide).toBe(0);
+    deck.sync(5 - 1e-3);
+    expect(deck.slide).toBe(-1);
+    deck.sync(5 - 1e-7); // within float noise of the stop
+    expect(deck.slide).toBe(0);
+    deck.sync(14.999);
+    expect(deck.slide).toBe(1);
+    deck.sync(1000);
+    expect(deck.slide).toBe(2);
+  });
+
+  test('sync drops a step in progress', () => {
+    const deck = new Deck([5, 10], 0);
+    deck.next();
+    deck.sync(7);
+    expect(deck.target).toBeNull();
+    expect(deck.slide).toBe(0);
+    expect(deck.next()).toEqual({ kind: 'play', from: 5, to: 10 });
+  });
+
+  test('count and stops are the ones given', () => {
+    const deck = new Deck([1, 2, 3], 0);
+    expect(deck.count).toBe(3);
+    expect(deck.stops).toEqual([1, 2, 3]);
+  });
 });

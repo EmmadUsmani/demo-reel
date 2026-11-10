@@ -6,6 +6,9 @@
 import type { Engine } from '../engine/engine';
 import { PlaybackClock } from './clock';
 import { Deck, type Move } from './deck';
+import { keyCommand } from './keys';
+import { captionAt, clockText, escapeHtml, notesFor, sceneAt, startTime, type Caption } from './moments';
+import { shareLinks } from './share';
 
 export type Mode = 'video' | 'slides';
 
@@ -26,7 +29,6 @@ export type PlayerOptions = {
   narration: boolean;
 };
 
-type Caption = { at: number; end: number; text: string };
 type Track = 'mix' | 'effects';
 
 /** Built players carry MP3 (every browser, every host that serves audio); the dev server, audio.ts's WAVs. */
@@ -42,9 +44,6 @@ const ICON = {
   prev: '<svg viewBox="0 0 24 24"><path d="M15.5 5.5L8.5 12l7 6.5z"/></svg>',
   next: '<svg viewBox="0 0 24 24"><path d="M8.5 5.5l7 6.5-7 6.5z"/></svg>',
 };
-
-const clock = (s: number) => `${Math.floor(Math.max(0, s) / 60)}:${String(Math.floor(Math.max(0, s) % 60)).padStart(2, '0')}`;
-const escape = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 
 export class Player {
   private t: number;
@@ -79,18 +78,12 @@ export class Player {
     this.narration = o.narration;
     this.captionsOn = o.captions;
     this.captions = engine.narration().map((line) => ({ at: line.at, end: line.until, text: line.caption ?? line.text }));
-    this.t = Math.min(this.to - 1e-3, Math.max(this.from, o.t ?? (entry ? this.deck.stops.at(-1) ?? this.from : o.poster ?? this.poster())));
+    this.t = startTime({ from: this.from, to: this.to, t: o.t, embed: !!entry, stops: this.deck.stops, poster: o.poster, timeline: engine.timeline });
     if (this.mode === 'slides' && o.slide) { this.started = true; this.t = (this.deck.go(o.slide - 1) as { t: number }).t; }
     this.build();
     this.loadAudio();
     void this.loadCaptions();
     requestAnimationFrame((now) => this.frame(now));
-  }
-
-  /** Before playing, show a frame with something on it: the first stop, else the end of the first scene. */
-  private poster() {
-    const [first, second] = this.engine.timeline;
-    return this.deck.stops[0] ?? Math.max(0, Math.min(second?.start ?? this.to, first?.end ?? this.to) - 1 / 60);
   }
 
   // ------------------------------------------------------------------ sound
@@ -314,8 +307,8 @@ export class Player {
     track.addEventListener('pointermove', (event) => {
       const box = track.getBoundingClientRect();
       const t = this.from + Math.min(1, Math.max(0, (event.clientX - box.left) / box.width)) * (this.to - this.from);
-      const scene = this.engine.timeline.filter((e) => t >= e.start && t < e.end).at(-1)?.id;
-      this.el.tip!.textContent = `${clock(t - this.from)}${scene ? `  ·  ${scene}` : ''}`;
+      const scene = sceneAt(this.engine.timeline, t);
+      this.el.tip!.textContent = `${clockText(t - this.from)}${scene ? `  ·  ${scene}` : ''}`;
       this.el.tip!.style.left = `${event.clientX - box.left}px`;
       this.el.tip!.hidden = false;
     });
@@ -342,23 +335,23 @@ export class Player {
 
   private key(event: KeyboardEvent) {
     if (event.metaKey || event.ctrlKey || event.altKey || (event.target as HTMLElement).closest?.('.share')) return;
-    const k = event.key, slides = this.mode === 'slides';
-    if (slides && [' ', 'ArrowRight', 'PageDown', 'Enter'].includes(k)) this.next();
-    else if (slides && ['ArrowLeft', 'PageUp', 'Backspace'].includes(k)) this.prev();
-    else if (slides && k === 'Home') this.go(-1);
-    else if (slides && k === 'End') this.go(this.deck.count - 1);
-    else if (k === ' ' || k === 'k') this.toggle();
-    else if (k === 'ArrowRight') this.seek(this.t + (event.shiftKey ? 1 / 60 : 5));
-    else if (k === 'ArrowLeft') this.seek(this.t - (event.shiftKey ? 1 / 60 : 5));
-    else if (k === 'Home') this.seek(this.from);
-    else if (k === 'n') this.setNarration(!this.narration);
-    else if (k === 'c') this.setCaptions(!this.captionsOn);
-    else if (k === 's') this.setNotes(!this.notesOn);
-    else if (k === 'v') this.setMode(slides ? 'video' : 'slides');
-    else if (k === 'm') this.setMuted(!this.muted);
-    else if (k === 'f') this.fullscreen();
-    else if (k === 'Escape') this.share(false);
-    else return;
+    const command = keyCommand(event.key, event.shiftKey, this.mode);
+    if (!command) return;
+    switch (command.kind) {
+      case 'next': this.next(); break;
+      case 'prev': this.prev(); break;
+      case 'slide': this.go(command.to === 'first' ? -1 : this.deck.count - 1); break;
+      case 'toggle': this.toggle(); break;
+      case 'seekBy': this.seek(this.t + command.by); break;
+      case 'seekStart': this.seek(this.from); break;
+      case 'narration': this.setNarration(!this.narration); break;
+      case 'captions': this.setCaptions(!this.captionsOn); break;
+      case 'notes': this.setNotes(!this.notesOn); break;
+      case 'mode': this.setMode(this.mode === 'slides' ? 'video' : 'slides'); break;
+      case 'mute': this.setMuted(!this.muted); break;
+      case 'fullscreen': this.fullscreen(); break;
+      case 'closeShare': this.share(false); break;
+    }
     event.preventDefault();
     this.wake();
   }
@@ -374,18 +367,11 @@ export class Player {
     this.el.share!.hidden = !open;
     this.el['share-on']!.setAttribute('aria-pressed', String(open));
     if (!open) return;
-    const base = `${location.origin === 'null' ? '' : location.origin}${location.pathname}`;
-    const keep = new URLSearchParams(location.search);
-    for (const k of ['t', 'slide', 'mode', 'scene']) keep.delete(k);
-    const url = (params: Record<string, string>) => {
-      const q = new URLSearchParams(keep);
-      for (const [k, v] of Object.entries(params)) q.set(k, v);
-      return `${base}?${q}`;
-    };
-    const scene = this.o.scene ?? this.engine.timeline.filter((e) => this.t >= e.start && this.t < e.end).at(-1)?.id ?? '';
-    (this.el['link-t'] as HTMLInputElement).value = url({ ...(this.o.scene ? { scene: this.o.scene } : {}), t: this.t.toFixed(2) });
-    (this.el['link-slide'] as HTMLInputElement).value = url({ ...(this.o.scene ? { scene: this.o.scene } : {}), mode: 'slides', slide: String(Math.max(1, this.deck.slide + 1)) });
-    (this.el.embed as HTMLTextAreaElement).value = `<iframe src="${escape(url({ scene }))}" width="960" height="540" style="border:0" allow="autoplay; fullscreen" allowfullscreen title="${escape(`${this.o.title}: ${scene}`)}"></iframe>`;
+    const scene = this.o.scene ?? sceneAt(this.engine.timeline, this.t) ?? '';
+    const links = shareLinks(location, { title: this.o.title, scene: this.o.scene, sceneOnScreen: scene, t: this.t, slide: this.deck.slide });
+    (this.el['link-t'] as HTMLInputElement).value = links.moment;
+    (this.el['link-slide'] as HTMLInputElement).value = links.slide;
+    (this.el.embed as HTMLTextAreaElement).value = links.embed;
   }
 
   /** The controls hide when nobody touches them: while the video plays, and always on a slide, so they don't cover it. */
@@ -434,18 +420,18 @@ export class Player {
   private notes() {
     if (!this.el.notes) return;
     const k = this.deck.target ?? this.deck.slide;
-    const lines = k < 0 ? [] : this.captions.filter((c) => c.at > (this.deck.stops[k - 1] ?? this.from) - 1e-6 && c.at <= this.deck.stops[k]!);
+    const lines = notesFor(this.captions, this.deck.stops, this.from, k);
     this.el.notes!.innerHTML = k < 0
       ? '<p class="hint">Press → or click the slide to start. ← goes back.</p>'
-      : `<h2>Slide ${k + 1} of ${this.deck.count}</h2>${lines.map((l) => `<p>${escape(l.text)}</p>`).join('') || '<p class="hint">No narration on this slide.</p>'}`;
+      : `<h2>Slide ${k + 1} of ${this.deck.count}</h2>${lines.map((l) => `<p>${escapeHtml(l.text)}</p>`).join('') || '<p class="hint">No narration on this slide.</p>'}`;
     this.ui();
   }
 
   /** What changes with every frame: the time, the scrubber and the caption. */
   private tick() {
     (this.el.scrub as HTMLInputElement).value = String(this.t);
-    this.el.time!.textContent = `${clock(this.t - this.from)} / ${clock(this.to - this.from)}`;
-    const caption = this.captionsOn && this.started ? this.captions.find((c) => this.t >= c.at && this.t < c.end) : undefined;
+    this.el.time!.textContent = `${clockText(this.t - this.from)} / ${clockText(this.to - this.from)}`;
+    const caption = this.captionsOn && this.started ? captionAt(this.captions, this.t) : undefined;
     if (this.el.caption!.textContent !== (caption?.text ?? '')) this.el.caption!.textContent = caption?.text ?? '';
     this.el.caption!.hidden = !caption;
   }

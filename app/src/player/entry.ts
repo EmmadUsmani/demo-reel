@@ -13,17 +13,14 @@ import { loadFonts } from '../engine/assets';
 import { Engine } from '../engine/engine';
 import { applyTheme } from '../engine/palette';
 import { EDITS } from '../timeline';
+import { parseParams } from './params';
 import { Player } from './player';
 
-const params = new URLSearchParams(location.search);
-const hash = location.hash.slice(1);
-if (hash === 'slides') params.set('mode', 'slides');
-else if (/^slide-\d+$/.test(hash)) { params.set('mode', 'slides'); params.set('slide', hash.slice(6)); }
-else if (hash.startsWith('scene-')) params.set('scene', hash.slice(6));
+const params = parseParams(location.search, location.hash);
 const root = document.getElementById('player')!;
 
 async function boot() {
-  const name = params.get('edit') ?? Object.keys(EDITS)[0]!;
+  const name = params.edit ?? Object.keys(EDITS)[0]!;
   const edit = EDITS[name];
   if (!edit) throw new Error(`no edit '${name}' (edits: ${Object.keys(EDITS).join(', ')})`);
   applyTheme(edit.theme);
@@ -31,20 +28,20 @@ async function boot() {
   const canvas = document.createElement('canvas');
   const engine = new Engine(canvas, edit.timeline);
   await loadFonts();
-  const scene = params.get('scene') ?? undefined;
+  const { scene } = params;
   await engine.init(scene ? (e) => e.id === scene : undefined);
   if (engine.errors.length) console.error(engine.errors.join('\n\n'));
   // a handle for tests driving the page (e2e/)
   (window as any).__player = new Player(root, canvas, engine, {
     name,
     title: edit.title ?? name,
-    mode: params.get('mode') === 'slides' ? 'slides' : 'video',
+    mode: params.mode,
     scene,
-    slide: params.has('slide') ? +params.get('slide')! : undefined,
-    t: params.has('t') ? +params.get('t')! : undefined,
+    slide: params.slide,
+    t: params.t,
     poster: edit.poster ? (engine.timeline.find((e) => e.id === edit.poster!.scene)?.start ?? 0) + edit.poster.at : undefined,
-    captions: params.get('captions') === '1',
-    narration: params.get('narration') !== '0',
+    captions: params.captions,
+    narration: params.narration,
   });
 }
 

@@ -3,18 +3,18 @@ import { loadFonts } from './engine/assets';
 import { Engine } from './engine/engine';
 import { applyTheme } from './engine/palette';
 import { PH, PW, SCALE } from './engine/scene';
+import { loopRange, parsePreview, previewKey } from './preview';
 import { EDITS } from './timeline';
 
-const params = new URLSearchParams(location.search);
-const EXPORT = params.has('export');
-const ONLY = params.get('only');
-const EDIT = params.get('edit') ?? Object.keys(EDITS)[0]!;
+const params = parsePreview(location.search);
+const EXPORT = params.export;
+const EDIT = params.edit ?? Object.keys(EDITS)[0]!;
 const edit = EDITS[EDIT];
 if (!edit) throw new Error(`no edit '${EDIT}' (edits: ${Object.keys(EDITS).join(', ')})`);
 applyTheme(edit.theme);
 const TITLE = edit.title ?? EDIT;
 document.title = `${EDIT} — demo-reel`;
-const FROM = params.get('t') ? parseFloat(params.get('t')!) : null;
+const FROM = params.from;
 
 const canvas = document.getElementById('c') as HTMLCanvasElement;
 const engine = new Engine(canvas, edit.timeline);
@@ -25,7 +25,7 @@ declare global {
 
 async function boot() {
   await loadFonts();
-  const only = ONLY ? new Set(ONLY.split(',')) : null;
+  const { only } = params;
   await engine.init(only ? (e) => only.has(e.id) : undefined);
   if (EXPORT) setupExport();
   else setupPlayer();
@@ -108,15 +108,13 @@ function setupPlayer() {
   canvas.onclick = toggle;
   scrub.oninput = () => seek(parseFloat(scrub.value));
   window.addEventListener('keydown', (ev) => {
-    if (ev.key === ' ') { ev.preventDefault(); toggle(); }
-    if (ev.key === 'ArrowRight') seek(t + (ev.shiftKey ? 5 : 1));
-    if (ev.key === 'ArrowLeft') seek(t - (ev.shiftKey ? 5 : 1));
-    if (ev.key === '.') seek(t + 1 / 60);
-    if (ev.key === ',') seek(t - 1 / 60);
-    if (ev.key === 'l') { const e = engine.timeline.find((x) => t >= x.start && t < x.end); loop = loop ? null : e ? [e.start, e.end] : null; }
-    if (ev.key === 'h') ui.classList.toggle('hidden');
-    if (ev.key === ']') { const e = engine.timeline.find((x) => x.start > t + 0.01); if (e) seek(e.start); }
-    if (ev.key === '[') { const es = engine.timeline.filter((x) => x.start < t - 0.3); const e = es[es.length - 1]; if (e) seek(e.start); }
+    const action = previewKey(ev.key, ev.shiftKey, t, engine.timeline);
+    if (!action) return;
+    if (ev.key === ' ') ev.preventDefault();
+    if (action.kind === 'toggle') toggle();
+    else if (action.kind === 'seek') seek(action.t);
+    else if (action.kind === 'loop') loop = loop ? null : loopRange(engine.timeline, t);
+    else ui.classList.toggle('hidden');
   });
 
   let frames = 0, fpsAt = performance.now(), fps = 0;

@@ -7,7 +7,9 @@ import type { Engine } from '../engine/engine';
 import { PlaybackClock } from './clock';
 import { Deck, type Move } from './deck';
 import { keyCommand } from './keys';
-import { captionAt, clockText, escapeHtml, notesFor, sceneAt, startTime, type Caption } from './moments';
+import { slideNotes, type Spoken } from '../engine/notes';
+import { authoredNotes, fetchCaptions, narrationCaptions } from './captions';
+import { captionAt, clockText, escapeHtml, sceneAt, spanOf, startTime, type Caption } from './moments';
 import { shareLinks } from './share';
 
 export type Mode = 'video' | 'slides';
@@ -27,6 +29,8 @@ export type PlayerOptions = {
   poster?: number;
   captions: boolean;
   narration: boolean;
+  /** False for an edit that is a deck (Edit.deck): no soundtrack is asked for, and time runs on the wall clock. */
+  sound?: boolean;
 };
 
 type Track = 'mix' | 'effects';
@@ -64,25 +68,28 @@ export class Player {
   private notesOn = false;
   private muted = false;
   private captions: Caption[];
+  private authored: Spoken[];
   private idleTimer = 0;
   private el: Record<string, HTMLElement> = {};
 
   constructor(private root: HTMLElement, private canvas: HTMLCanvasElement, private engine: Engine, private o: PlayerOptions) {
-    const entry = o.scene ? engine.timeline.find((e) => e.id === o.scene) : undefined;
-    if (o.scene && !entry) throw new Error(`no scene '${o.scene}' (scenes: ${engine.timeline.map((e) => e.id).join(', ')})`);
-    this.from = entry?.start ?? 0;
-    this.to = entry?.end ?? engine.duration;
+    const span = spanOf(engine.timeline, o.scene, engine.duration);
+    this.from = span.start;
+    this.to = span.end;
     this.clock = new PlaybackClock(this.to);
     this.deck = new Deck(engine.stops().map((s) => s.t).filter((t) => t >= this.from && t < this.to), this.from);
     this.mode = o.mode;
     this.narration = o.narration;
     this.captionsOn = o.captions;
-    this.captions = engine.narration().map((line) => ({ at: line.at, end: line.until, text: line.caption ?? line.text }));
-    this.t = startTime({ from: this.from, to: this.to, t: o.t, embed: !!entry, stops: this.deck.stops, poster: o.poster, timeline: engine.timeline });
+    this.captions = narrationCaptions(engine);
+    this.authored = authoredNotes(engine);
+    this.t = startTime({ from: this.from, to: this.to, t: o.t, embed: !!o.scene, stops: this.deck.stops, poster: o.poster, timeline: engine.timeline });
     if (this.mode === 'slides' && o.slide) { this.started = true; this.t = (this.deck.go(o.slide - 1) as { t: number }).t; }
     this.build();
-    this.loadAudio();
-    void this.loadCaptions();
+    if (o.sound !== false) {
+      this.loadAudio();
+      void this.loadCaptions();
+    }
     requestAnimationFrame((now) => this.frame(now));
   }
 
@@ -120,10 +127,7 @@ export class Player {
 
   /** scripts/audio.ts times each caption to its speech; without it, a caption shows for its whole beat. */
   private async loadCaptions() {
-    try {
-      const response = await fetch(`audio/${this.o.name}/captions.json`);
-      if (response.ok) this.captions = (await response.json()) as Caption[];
-    } catch { /* keep the beat-long captions */ }
+    this.captions = (await fetchCaptions(this.o.name)) ?? this.captions;
     this.drawn = Number.NaN;
     this.notes();
   }
@@ -287,12 +291,14 @@ export class Player {
         <div class="share" hidden>
           <label>Link to this moment<input class="link-t" readonly></label>
           <label class="for-slides">Link to this slide<input class="link-slide" readonly></label>
+          <label>Presenter view: notes, next slide, timer<input class="link-presenter" readonly></label>
+          <a class="open-presenter" target="_blank" rel="noopener">Open the presenter view</a>
           <label>Embed this scene<textarea class="embed" readonly rows="4"></textarea></label>
         </div>
       </div></div>
       <aside class="notes" hidden></aside>`;
     const $ = (selector: string) => this.root.querySelector<HTMLElement>(selector)!;
-    for (const name of ['frame', 'caption', 'big', 'bar', 'marks', 'scrub', 'tip', 'play', 'pager', 'back', 'count', 'fwd', 'mute', 'time', 'title', 'voice', 'cc', 'notes-on', 'mode', 'share-on', 'fs', 'share', 'link-t', 'link-slide', 'embed', 'notes']) this.el[name] = $(`.${name}`);
+    for (const name of ['frame', 'caption', 'big', 'bar', 'marks', 'scrub', 'tip', 'play', 'pager', 'back', 'count', 'fwd', 'mute', 'time', 'title', 'voice', 'cc', 'notes-on', 'mode', 'share-on', 'fs', 'share', 'link-t', 'link-slide', 'link-presenter', 'open-presenter', 'embed', 'notes']) this.el[name] = $(`.${name}`);
     this.el.frame!.prepend(this.canvas);
     this.el.title!.textContent = this.o.scene ? `${this.o.title} · ${this.o.scene}` : this.o.title;
 
@@ -328,7 +334,7 @@ export class Player {
     this.el['notes-on']!.addEventListener('click', () => this.setNotes(!this.notesOn));
     this.el.mode!.addEventListener('click', () => this.setMode(this.mode === 'video' ? 'slides' : 'video'));
     this.el['share-on']!.addEventListener('click', () => this.share(this.el.share!.hidden === true));
-    for (const field of ['link-t', 'link-slide', 'embed']) this.el[field]!.addEventListener('focus', (event) => (event.target as HTMLInputElement).select());
+    for (const field of ['link-t', 'link-slide', 'link-presenter', 'embed']) this.el[field]!.addEventListener('focus', (event) => (event.target as HTMLInputElement).select());
     this.el.fs!.addEventListener('click', () => this.fullscreen());
     window.addEventListener('keydown', (event) => this.key(event));
     this.root.addEventListener('pointermove', () => this.wake());
@@ -371,9 +377,12 @@ export class Player {
     this.el['share-on']!.setAttribute('aria-pressed', String(open));
     if (!open) return;
     const scene = this.o.scene ?? sceneAt(this.engine.timeline, this.t) ?? '';
+    if (this.mode === 'video') this.deck.sync(this.t); // the slide the presenter's link opens on
     const links = shareLinks(location, { title: this.o.title, scene: this.o.scene, sceneOnScreen: scene, t: this.t, slide: this.deck.slide });
     (this.el['link-t'] as HTMLInputElement).value = links.moment;
     (this.el['link-slide'] as HTMLInputElement).value = links.slide;
+    (this.el['link-presenter'] as HTMLInputElement).value = links.presenter;
+    (this.el['open-presenter'] as HTMLAnchorElement).href = links.presenter;
     (this.el.embed as HTMLTextAreaElement).value = links.embed;
   }
 
@@ -409,7 +418,7 @@ export class Player {
     this.el.pager!.hidden = !slides;
     this.el.time!.hidden = slides;
     $hide(this.el.scrub!.parentElement!, slides);
-    $hide(this.root.querySelector('.share .for-slides')!, !slides);
+    for (const el of this.root.querySelectorAll('.share .for-slides')) $hide(el, !slides);
     const shown = this.deck.target ?? this.deck.slide;
     this.el.count!.textContent = `${shown + 1 > 0 ? shown + 1 : '–'} / ${this.deck.count}`;
     (this.el.back as HTMLButtonElement).disabled = this.deck.slide < 0 && this.deck.target === null;
@@ -423,10 +432,10 @@ export class Player {
   private notes() {
     if (!this.el.notes) return;
     const k = this.deck.target ?? this.deck.slide;
-    const lines = notesFor(this.captions, this.deck.stops, this.from, k);
+    const lines = slideNotes({ authored: this.authored, spoken: this.captions }, this.deck.stops, this.from, k);
     this.el.notes!.innerHTML = k < 0
       ? '<p class="hint">Press → or click the slide to start. ← goes back.</p>'
-      : `<h2>Slide ${k + 1} of ${this.deck.count}</h2>${lines.map((l) => `<p>${escapeHtml(l.text)}</p>`).join('') || '<p class="hint">No narration on this slide.</p>'}`;
+      : `<h2>Slide ${k + 1} of ${this.deck.count}</h2>${lines.map((line) => `<p>${escapeHtml(line)}</p>`).join('') || '<p class="hint">No narration on this slide.</p>'}`;
     this.ui();
   }
 

@@ -140,4 +140,26 @@ describe('Deck', () => {
     expect(deck.count).toBe(3);
     expect(deck.stops).toEqual([1, 2, 3]);
   });
+
+  test('upNext: the slide after the one on screen, or after the one being played to; none on the last', () => {
+    const deck = new Deck([5, 10, 15], 0);
+    expect(deck.upNext()).toBe(0);
+    deck.next();
+    expect(deck.upNext()).toBe(1);
+    deck.arrive(5);
+    expect(deck.upNext()).toBe(1);
+    deck.go(1);
+    expect(deck.upNext()).toBe(2);
+    deck.go(2);
+    expect(deck.upNext()).toBeNull();
+    deck.prev();
+    expect(deck.upNext()).toBe(2);
+  });
+
+  test('upNext on an empty deck is none; timeOf names a slide\'s time and the start', () => {
+    expect(new Deck([], 0).upNext()).toBeNull();
+    const deck = new Deck([5, 10], 2);
+    expect(deck.timeOf(-1)).toBe(2);
+    expect(deck.timeOf(1)).toBe(10);
+  });
 });

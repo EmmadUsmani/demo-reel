@@ -572,8 +572,12 @@ describe('the corner controls', () => {
       await page.goto(pilot(hash));
       await page.waitForFunction(() => (window as any).__player);
       if (hash.includes('presenter')) await presenterSettled(page); else await settled(page);
-      const info = await page.evaluate(() => {
-        const button = document.querySelector('.corner .c-next') as HTMLElement;
+      // on a phone the presenter keeps only play / pause on its small slide (Previous / Next are right below it)
+      const presenter = hash.includes('presenter');
+      expect(await page.isVisible('.corner .c-next'), hash).toBe(!presenter);
+      expect(await page.isVisible('.corner .c-back'), hash).toBe(!presenter);
+      const info = await page.evaluate((selector) => {
+        const button = document.querySelector(selector) as HTMLElement;
         const r = button.getBoundingClientRect();
         const hit = (x: number, y: number) => document.elementFromPoint(x, y)?.closest('button') === button;
         const cy = r.top + r.height / 2, cx = r.left + r.width / 2;
@@ -582,7 +586,7 @@ describe('the corner controls', () => {
           reach: [hit(r.right + 5, cy), hit(r.left + r.width / 2, r.bottom + 5), hit(cx, r.top - 5)],
           scroll: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth), inner: window.innerWidth,
         };
-      });
+      }, presenter ? '.corner .c-pause' : '.corner .c-next');
       expect(info.coarse, hash).toBe(true);
       expect(info.reach, hash).toEqual([true, true, true]);
       expect(info.scroll, hash).toBeLessThanOrEqual(info.inner);

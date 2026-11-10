@@ -22,13 +22,13 @@ export default class Loop extends Narrated {
   protected ids = ['f3a', 'f3e', 'f3f', 'f3g'];
   protected hold = { f3a: 0.6, f3g: 1.4 };
 
-  private stops() {
+  private beats() {
     const a = this.T('f3a'), la = this.E('f3a') - a;
     return { stop: a + 0.5, pace: a + la * 0.22, pull: a + la * 0.42, codex: a + la * 0.62, classify: this.T('f3e') + 0.3, after: this.T('f3f') + 0.2, results: this.T('f3g') + 0.3 };
   }
 
   private cams(): [number, Cam, ((t: number) => number)?][] {
-    const s = this.stops();
+    const s = this.beats();
     const wide: Cam = { x: 960, y: 540, zoom: 1 };
     return [
       [0, wide],
@@ -41,7 +41,7 @@ export default class Loop extends Narrated {
   }
 
   cues(): Cue[] {
-    const s = this.stops();
+    const s = this.beats();
     return [
       ...camCues(this.cams()),
       ...ticks([s.stop, s.pace, s.pull, s.codex, s.classify]),
@@ -53,7 +53,7 @@ export default class Loop extends Narrated {
   render(f: Frame) {
     const g = this.g;
     const lt = f.lt;
-    const s = this.stops();
+    const s = this.beats();
     backdrop(g, f.t);
     heading(g, 'The supervisor loop', 'One iteration', prog(lt, 0.1, 0.9) * (1 - prog(lt, s.pull, s.pull + 0.4)), 120, 140, 68);
     g.save();

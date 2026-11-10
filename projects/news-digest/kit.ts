@@ -18,6 +18,8 @@ export const mono = (px: number, weight = 500) => `${weight} ${px}px "JetBrains 
 
 /** How much of each scene's extra hold to keep: one dial for the edit's overall pace. */
 const HOLD = 0.75;
+/** How long before a beat's end its stop sits: slides change over the last half second of a beat. */
+const STOP_LEAD = 0.7;
 
 /**
  * A scene told as a list of narration lines (ids into script.ts). Each line gets its measured spoken
@@ -57,6 +59,8 @@ export abstract class Narrated extends Scene {
   /** A point `k` (0..1) through line `id`'s beat. */
   protected at(id: string, k: number) { return lerp(this.T(id), this.E(id), k); }
   duration() { return this.total; }
+  /** A stop near the end of every beat: its line said and its picture built, before the change into the next beat begins. */
+  stops() { return this.ids.map((id) => this.E(id) - STOP_LEAD); }
   narration(): Line[] { return this.ids.map((id) => ({ id, at: this.T(id) + 0.05, until: this.E(id), text: SCRIPT[id]!, caption: written(SCRIPT[id]!) })); }
 }
 

@@ -17,9 +17,9 @@ export const mono = (px: number, weight = 500) => `${weight} ${px}px "JetBrains 
 // ------------------------------------------------------------------ narrated slides
 
 /** How much of each scene's extra hold to keep: one dial for the edit's overall pace. */
-const HOLD = 0.75;
+export const HOLD = 0.75;
 /** How long before a beat's end its stop sits: slides change over the last half second of a beat. */
-const STOP_LEAD = 0.7;
+export const STOP_LEAD = 0.7;
 
 /**
  * A scene told as a list of narration lines (ids into script.ts). Each line gets its measured spoken

@@ -7,6 +7,7 @@ import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { countIterations, parseGitLog, parseUsage, START } from './stats-parse';
 
 const REPO = (process.env.ND_REPO ?? '~/projects/news-digest').replace(/^~/, os.homedir());
 const VM = process.env.ND_VM ?? 'news-digest.exe.xyz';
@@ -14,40 +15,14 @@ const sh = (cmd: string, args: string[]) => execFileSync(cmd, args, { maxBuffer:
 const ssh = (command: string) => sh('ssh', ['-o', 'BatchMode=yes', VM, command]);
 
 sh('git', ['-C', REPO, 'fetch', '-q', 'origin']);
-const START = Date.parse('2026-11-01T17:00:00Z'); // the first iteration's day (Nov 1, 09:00 PT); hours count from here
-const hourOf = (ms: number) => Math.floor((ms - START) / 3_600_000);
 
 // commits and inserted lines per hour (merges excluded from line counts, which git counts twice)
-const log = sh('git', ['-C', REPO, 'log', 'origin/main', '--format=@%ct %P', '--shortstat']);
-const commits: number[] = [], lines: number[] = [];
-let hour = -1;
-for (const row of log.split('\n')) {
-  if (row.startsWith('@')) {
-    const [time, ...parents] = row.slice(1).split(' ');
-    hour = hourOf(+time! * 1000);
-    if (hour < 0) continue;
-    commits[hour] = (commits[hour] ?? 0) + 1;
-    if (parents.filter(Boolean).length > 1) hour = -1;
-  } else if (hour >= 0 && /changed/.test(row)) {
-    lines[hour] = (lines[hour] ?? 0) + Number(/(\d+) insertion/.exec(row)?.[1] ?? 0) + Number(/(\d+) deletion/.exec(row)?.[1] ?? 0);
-  }
-}
+const { commits, lines } = parseGitLog(sh('git', ['-C', REPO, 'log', 'origin/main', '--format=@%ct %P', '--shortstat']));
 
 // iterations finished per hour, and the weekly quota after each one
 const finished = ssh('grep -E "Iteration [0-9]+ finished" ~/agent-control/logs/supervisor.log | cut -c1-20');
-const iterations: number[] = [];
-for (const row of finished.trim().split('\n')) {
-  const h = hourOf(Date.parse(row));
-  if (h >= 0) iterations[h] = (iterations[h] ?? 0) + 1;
-}
-const usage = ssh('cut -f1,2,3,4,5,8 ~/agent-control/logs/usage.tsv');
-const quota: [number, number][] = [];
-let tokensIn = 0, tokensCached = 0, tokensOut = 0, measured = 0;
-for (const row of usage.trim().split('\n')) {
-  const [time, , input, cached, output, weekly] = row.split('\t');
-  if (+input! > 0) { tokensIn += +input!; tokensCached += +cached!; tokensOut += +output!; measured++; }
-  if (weekly) quota.push([Math.round(((Date.parse(time!) - START) / 3_600_000) * 100) / 100, +weekly]);
-}
+const iterations = countIterations(finished.trim().split('\n'));
+const { quota, tokensIn, tokensCached, tokensOut, measured } = parseUsage(ssh('cut -f1,2,3,4,5,8 ~/agent-control/logs/usage.tsv'));
 const window = JSON.parse(ssh('cat ~/agent-control/status/usage.json')).primary;
 const weekEnd = window.resets_at * 1000 - window.window_minutes * 60_000; // the week that just reset
 const weekStart = weekEnd - window.window_minutes * 60_000;

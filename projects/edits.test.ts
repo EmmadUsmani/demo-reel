@@ -2,8 +2,10 @@
 // projects/testing/browser.ts). What needs the voice itself (does a line fit its beat?) is covered by
 // scripts/audio.ts at render time; here a line must at least be speakable in the time it is given.
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 import { FRAME } from '@engine/stops';
-import { installBrowser, manifestOf, project, projectNames } from './testing/browser';
+import { installBrowser, manifestOf, project, projectNames, ROOT } from './testing/browser';
 import { SCRIPT, written } from './news-digest/script';
 import VO from './news-digest/vo-lengths.json';
 
@@ -175,6 +177,28 @@ for (const name of projectNames()) {
       });
     });
 
+    describe('cards and theme', () => {
+      test('a title card shows at most three polaroids; an end card has three or four chips', () => {
+        for (const entry of engine().timeline) {
+          const { cards, chips } = entry.params ?? {};
+          if (cards) expect(cards.length, `${entry.id}: the title card draws the first three`).toBeLessThanOrEqual(3);
+          if (chips) {
+            expect(chips.length, entry.id).toBeGreaterThanOrEqual(3);
+            expect(chips.length, entry.id).toBeLessThanOrEqual(4);
+          }
+        }
+      });
+
+      test('the theme\'s colours are the hex the engine mixes alpha into (shadow is an r, g, b triple), and its fonts exist', () => {
+        const { colors = {}, fontFiles = [] } = edit().theme ?? {};
+        for (const [key, value] of Object.entries(colors)) {
+          if (key === 'shadow') expect(value, key).toMatch(/^\d+, \d+, \d+$/);
+          else if (key !== 'tape') expect(value, key).toMatch(/^#[0-9a-f]{6}$/i);
+        }
+        for (const [family, file] of fontFiles) expect(existsSync(file), `${family}: ${file}`).toBe(true);
+      });
+    });
+
     describe('footage manifest', () => {
       const manifest = () => manifestOf(name);
 
@@ -205,6 +229,22 @@ for (const name of projectNames()) {
     });
   });
 }
+
+describe('README gallery', () => {
+  const readme = readFileSync(path.join(ROOT, 'README.md'), 'utf8');
+
+  test("states each edit's real length", async () => {
+    let checked = 0;
+    for (const name of projectNames()) {
+      const shown = new RegExp(`\\*\\*\\[[^\\]]+\\]\\(projects/${name}/treatment\\.md\\)\\*\\* · (\\d+):(\\d\\d)`).exec(readme);
+      if (!shown) continue; // not in the gallery
+      const { engine } = await project(name);
+      expect(Math.round(engine.duration), name).toBe(Number(shown[1]) * 60 + Number(shown[2]));
+      checked++;
+    }
+    expect(checked, 'the gallery lists the five original edits').toBeGreaterThanOrEqual(5);
+  });
+});
 
 describe('news-digest narration', () => {
   let loaded: Awaited<ReturnType<typeof project>>;

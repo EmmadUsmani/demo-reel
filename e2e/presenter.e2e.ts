@@ -93,12 +93,12 @@ describe('presenter view', () => {
     await page.close();
   }, 90_000);
 
-  test('forward during a step finishes it; back returns at once; Space, Enter and Backspace work as in slides mode', async () => {
+  test('forward during a step finishes it; back returns at once; Enter and Backspace work as in slides mode', async () => {
     const { page } = await presenter('?view=presenter&slide=3');
     expect(await presenterState(page)).toMatchObject({ slide: 2, count: expect.stringMatching(/^3 \//) });
     await page.keyboard.press('ArrowRight'); // starts the step to slide 4
     await page.waitForTimeout(250);
-    await page.keyboard.press('Space'); // finishes it
+    await page.keyboard.press('Enter'); // finishes it
     await presenterSettled(page);
     expect(await presenterState(page)).toMatchObject({ slide: 3, target: null, playing: false });
     await page.keyboard.press('ArrowLeft');
@@ -136,14 +136,19 @@ describe('presenter view', () => {
     await page.close();
   }, 90_000);
 
-  test('the buttons step like the keys, and a click on the Next button then Space does not step twice', async () => {
+  test('the buttons step like the keys, and a click on the Next button then Space pauses (it does not step again)', async () => {
     const { page } = await presenter();
     await page.click('.p-fwd');
     await presenterSettled(page);
     expect((await presenterState(page)).slide).toBe(0);
-    await page.keyboard.press('Space'); // the button has focus: Space is its click, once
+    await page.click('.p-fwd');
     await page.waitForTimeout(250);
-    expect(await presenterState(page)).toMatchObject({ target: 1, playing: true });
+    await page.keyboard.press('Space'); // the click left no focus on the button: Space is the pause key
+    const paused = await presenterState(page);
+    expect(paused).toMatchObject({ target: 1, playing: true });
+    await page.waitForTimeout(500);
+    expect((await presenterState(page)).t).toBe(paused.t);
+    await page.keyboard.press('Space');
     await presenterSettled(page);
     expect((await presenterState(page)).slide).toBe(1);
     await page.click('.p-prev');

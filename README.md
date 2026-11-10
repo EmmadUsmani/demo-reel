@@ -69,10 +69,10 @@ bun run test:e2e    # headless Chrome, ~3 min; needs the edit's footage and audi
 ```
 
 - `app/src/engine/`, `app/src/scenes/`: the engine's maths, camera, clips and drawing, and the shared cards, against a recording fake canvas (`app/src/testing/`): every frame is deterministic, finite and balanced.
-- `app/src/player/`, `app/src/preview.test.ts`: the player's URL parameters, keys, share links, captions, clock, deck, speaker notes and the presenter's timer.
+- `app/src/player/`, `app/src/preview.test.ts`: the player's URL parameters, keys, share links, captions, clock, ambient clock, deck and its step progress, speaker notes and the presenter's timer.
 - `projects/edits.test.ts`, `projects/render.test.ts`: every edit keeps the timeline rules (narration fits its slot and never overlaps, stops sit outside crossfades, plates exist in the manifest) and draws deterministically with stand-in footage (`projects/testing/`). Per-project helpers have their own tests.
 - `scripts/*.test.ts`: argument parsing, the audio mix, captions, limiter and loudness, the build, render flags and encoding, the slide plan and deck exports; real ffmpeg, Chrome, `pdfinfo` and `unzip` where cheap, skipped with a message if missing.
-- `e2e/`: the built player (controls, links, layout, sync, slides), the presenter view, decks, the single-file player (from `file://` and under an artifact's CSP), the `news-digest-deck` pilot, the preview and `?export=1` page, and the static slide exports.
+- `e2e/`: the built player (controls, links, layout, sync, slides), the presenter view, the deck's interface (view switch, progress bar, ambient motion), decks, the single-file player (from `file://` and under an artifact's CSP), the `news-digest-deck` pilot, the preview and `?export=1` page, and the static slide exports.
 
 On a Mac, run the browser tests with the display awake (`caffeinate -d -i bun run test:e2e`): with the display asleep Chrome stops drawing and every test times out.
 

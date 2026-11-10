@@ -18,6 +18,7 @@ const SLIDES: [scene: string, begins: string][] = [
   ['product', 'That is the whole product'],
   ['factory', 'Now the factory'],
   ['guardrails', 'The agent works inside fences'],
+  ['observe', 'Everything it does is observable'],
   ['end', 'One VM, one agent'],
 ];
 
@@ -61,6 +62,6 @@ describe('news-digest-deck', () => {
 
   test('the cards say nothing: the narration is only what the reused scenes hold', () => {
     const scenes = new Set(loaded.engine.narration().map((l) => l.scene));
-    expect([...scenes].sort()).toEqual(['guardrails', 'product']);
+    expect([...scenes].sort()).toEqual(['guardrails', 'observe', 'product']);
   });
 });

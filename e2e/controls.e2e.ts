@@ -235,25 +235,24 @@ describe('keyboard: slides', () => {
   // a second press during a step finishes it at once, so each pair of presses is one slide, without waiting for the narration
   const step = async (page: Page, key: string) => { await page.keyboard.press(key); await page.keyboard.press(key); };
 
-  test('space, Enter, PageDown, arrows and k step forward; Backspace, PageUp and the arrow step back', async () => {
+  test('Enter, PageDown and the arrow step forward; Backspace, PageUp and the arrow step back', async () => {
     const { page, problems } = await open(server.browser, `${server.url}?mode=slides`);
     expect(await slide(page)).toBe(-1);
     await step(page, 'Enter');
     expect(await slide(page)).toBe(0);
     await step(page, 'PageDown');
     expect(await slide(page)).toBe(1);
-    await step(page, ' ');
+    await step(page, 'Enter');
     expect(await slide(page)).toBe(2);
     await step(page, 'ArrowRight');
     expect(await slide(page)).toBe(3);
-    await step(page, 'k');
-    expect(await slide(page)).toBe(4);
     await page.keyboard.press('Backspace');
-    expect(await slide(page)).toBe(3);
-    await page.keyboard.press('PageUp');
     expect(await slide(page)).toBe(2);
-    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('PageUp');
     expect(await slide(page)).toBe(1);
+    await page.keyboard.press('ArrowLeft');
+    expect(await slide(page)).toBe(0);
+    await step(page, 'ArrowRight');
     const s = await ev(page, (P) => [P.t, P.deck.stops[1], P.playing]);
     expect(s[0]).toBeCloseTo(s[1] as number, 3);
     expect(s[2]).toBe(false);

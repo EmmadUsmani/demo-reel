@@ -141,9 +141,10 @@ An edit can be a presentation instead of a video: set `deck: true` in its `timel
 - a scene authors `notes()`, each note timed at one of its own `stops()` (use `this.stops()[i]`, not seconds); a slide's notes are those timed after the previous stop, up to its own, and a slide with none falls back to the narration said on the way;
 - the title, chapter and end cards take a `notes` param, so they need no `line`;
 - to give another project's scene notes, extend it in a thin file under your own `scenes/` and override `notes()`;
-- `bun scripts/build.ts --edit <name> --single` writes one `.html` (at most 16 MiB to publish as a Claude artifact); open it with `#presenter` for the presenter's view (notes, next slide, timer), or run `bun scripts/slides.ts` for the static deck.
+- `bun scripts/build.ts --edit <name> --single` writes one `.html` (at most 16 MiB to publish as a Claude artifact); open it with `#presenter` for the presenter's view (notes, next slide, timer), or run `bun scripts/slides.ts` for the static deck;
+- motion that should go on while a slide is held (the backdrop drift, a pulse, packets flowing along an edge) uses `f.ambient`, not `f.t`; it is `f.t` in the video and in stills, so nothing else changes (ENGINE.md, "Writing a scene");
 
-Look at a still at every stop, and read `slides.json` to check the notes. `projects/news-digest-deck/` is the worked example (seven slides made from news-digest's scenes), with `deck.test.ts` and `e2e/pilot.e2e.ts` as its tests.
+Look at a still at every stop, and read `slides.json` to check the notes. `projects/news-digest-deck/` is the worked example (eight slides made from news-digest's scenes), with `deck.test.ts` and `e2e/pilot.e2e.ts` as its tests.
 
 ## Iterating on feedback
 

@@ -34,6 +34,7 @@ const SCENES = () => [
     },
   }),
   E('guardrails', 'guardrails', { overlap: X }),
+  E('observe', 'observe', { overlap: X }),
   E('end', 'end-card', {
     overlap: X,
     params: {

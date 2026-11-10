@@ -2,7 +2,10 @@
 export const W = 1920;
 export const H = 1080;
 /** The render scale a page's query string asks for (`?scale=2`): a whole number, at least 1. */
-export const scaleFromSearch = (search: string) => Math.max(1, Math.round(+(new URLSearchParams(search).get('scale') ?? 1)));
+export const scaleFromSearch = (search: string) => {
+  const scale = Math.round(+(new URLSearchParams(search).get('scale') ?? 1));
+  return Number.isFinite(scale) ? Math.max(1, scale) : 1;
+};
 export const SCALE = scaleFromSearch(typeof location === 'undefined' ? '' : location.search);
 export const PW = W * SCALE;
 export const PH = H * SCALE;

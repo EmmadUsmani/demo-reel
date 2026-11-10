@@ -23,6 +23,12 @@ describe('render scale', () => {
     expect(scaleFromSearch('?scale=-2')).toBe(1);
   });
 
+  test('a scale that is not a number gives 1, not NaN', () => {
+    expect(scaleFromSearch('?scale=abc')).toBe(1);
+    expect(scaleFromSearch('?scale=')).toBe(1);
+    expect(scaleFromSearch('?scale=Infinity')).toBe(1);
+  });
+
   test('a fractional scale rounds to a whole one', () => {
     expect(scaleFromSearch('?scale=1.4')).toBe(1);
     expect(scaleFromSearch('?scale=1.6')).toBe(2);

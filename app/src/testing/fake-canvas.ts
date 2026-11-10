@@ -77,6 +77,7 @@ export function fakeContext(): FakeContext {
     setTransform: (...m: Matrix) => { target.matrix = m; },
     resetTransform: () => { target.matrix = [...IDENTITY]; },
     measureText: (text: string) => ({ width: textWidth(target.font, text) }),
+    getImageData: (_x: number, _y: number, width: number, height: number) => ({ width, height, data: new Uint8ClampedArray(4) }),
     createLinearGradient: (...args: number[]) => gradient('linear', args),
     createRadialGradient: (...args: number[]) => gradient('radial', args),
   };

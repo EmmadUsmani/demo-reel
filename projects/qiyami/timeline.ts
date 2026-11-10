@@ -13,6 +13,7 @@ export default {
         subtitle: 'prayer times and the last third of the night',
         kicker: 'Free · in your browser',
         line: 'Keeyaami shows today’s prayer times, and when the last third of the night begins.',
+        caption: 'Qiyami shows today’s prayer times, and when the last third of the night begins.',
         dur: 6,
         cards: [
           { footage: 'qiyami', clip: 'session', at: 'start', key: 'region', pad: 2 },
@@ -28,6 +29,7 @@ export default {
         subtitle: 'at qiyami.com',
         chips: ['Prayer times', 'Last third of the night', 'Any city', 'Calculation methods'],
         line: 'That’s Keeyaami, at keeyaami dot com.',
+        caption: 'That’s Qiyami, at qiyami.com.',
         card: { footage: 'qiyami', clip: 'session', at: 'saved', key: 'app', pad: 20 },
       },
     }),

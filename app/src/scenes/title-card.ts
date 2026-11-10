@@ -58,7 +58,8 @@ export default class TitleCard extends Scene {
     g.scale(1 - 0.04 * out, 1 - 0.04 * out);
 
     cardLayout(this.cards.length).forEach(([x, y, width, rotation], i) => {
-      const card = this.cards[i]!;
+      const card = this.cards[i];
+      if (!card) return; // cardLayout(0) still lays out one slot
       const k = prog(lt, CARDS_IN + i * CARD_STAGGER, CARDS_IN + i * CARD_STAGGER + 0.9, ease.spring);
       if (k <= 0) return;
       const bob = Math.sin(t * 1.4 + x) * 5 * k;

@@ -129,3 +129,15 @@ export const presenterSettled = (page: Page) => page.waitForFunction(() => {
   const P = (window as any).__player;
   return P.deck.target === null && !P.playing && P.drawn === P.t && P.stillOf === P.deck.upNext();
 }, null, { timeout: 30_000 });
+
+/** A single-file player of any edit (scripts/build.ts --single), built once per edit per run. */
+const singles = new Map<string, string>();
+export function buildSingleOf(edit: string) {
+  if (!singles.has(edit)) {
+    const out = path.join(ROOT, 'out', `e2e-single-${edit}.html`);
+    const build = Bun.spawnSync(['bun', 'scripts/build.ts', '--edit', edit, '--single', '--out', out], { cwd: ROOT, stderr: 'pipe' });
+    if (build.exitCode !== 0) throw new Error(`single build of ${edit} failed:\n${build.stderr}`);
+    singles.set(edit, out);
+  }
+  return singles.get(edit)!;
+}

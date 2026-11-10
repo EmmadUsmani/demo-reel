@@ -135,6 +135,16 @@ Then check the file itself, not the app:
   - every honesty note (coming soon, sped up, demo data, anything hidden for filming);
   - anything you couldn't verify or chose to leave out.
 
+## Decks
+
+An edit can be a presentation instead of a video: set `deck: true` in its `timeline.ts` and the player opens in slides mode, silent, with a stop per slide (`Scene.stops()`). Write what the presenter says per slide, not narration:
+- a scene authors `notes()`, each note timed at one of its own `stops()` (use `this.stops()[i]`, not seconds); a slide's notes are those timed after the previous stop, up to its own, and a slide with none falls back to the narration said on the way;
+- the title, chapter and end cards take a `notes` param, so they need no `line`;
+- to give another project's scene notes, extend it in a thin file under your own `scenes/` and override `notes()`;
+- `bun scripts/build.ts --edit <name> --single` writes one `.html` (under 20 MiB, for a Claude artifact); open it with `#presenter` for the presenter's view (notes, next slide, timer), or run `bun scripts/slides.ts` for the static deck.
+
+Look at a still at every stop, and read `slides.json` to check the notes. `projects/news-digest-deck/` is the worked example (seven slides made from news-digest's scenes), with `deck.test.ts` and `e2e/pilot.e2e.ts` as its tests.
+
 ## Iterating on feedback
 
 Change only what was asked, then re-run the checks it could have broken:

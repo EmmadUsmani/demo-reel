@@ -12,5 +12,6 @@ import './presenter.e2e';
 import './deck.e2e';
 import './export.e2e';
 import './single.e2e';
+import './pilot.e2e';
 
 afterAll(stopServing);

@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { FRAME } from '@engine/stops';
-import { installBrowser, manifestOf, project, projectNames, ROOT } from './testing/browser';
+import { installBrowser, manifestOf, project, projectNames, PROJECTS, ROOT } from './testing/browser';
 import { SCRIPT, written } from './news-digest/script';
 import VO from './news-digest/vo-lengths.json';
 
@@ -31,7 +31,7 @@ const RESPELLINGS: Record<string, [spoken: string, written: string][]> = {
 const CUE_KINDS = ['click', 'key', 'drop', 'whoosh-in', 'whoosh-out', 'whoosh-across', 'pop', 'swish', 'land', 'chime', 'tick', 'wheel'];
 
 test('there is an edit to test, and every project directory with a timeline is one', () => {
-  expect(projectNames()).toEqual(['excalidraw', 'hoppscotch', 'news-digest', 'openstreetmap', 'qiyami', 'todomvc', 'vite']);
+  expect(projectNames()).toEqual(['excalidraw', 'hoppscotch', 'news-digest', 'news-digest-deck', 'openstreetmap', 'qiyami', 'todomvc', 'vite']);
 });
 
 for (const name of projectNames()) {
@@ -199,7 +199,9 @@ for (const name of projectNames()) {
       });
     });
 
-    describe('footage manifest', () => {
+    // A deck made of another project's scenes has no footage of its own: it uses that project's, whose
+    // manifest this block checks under its own name.
+    describe.skipIf(!existsSync(path.join(PROJECTS, name, 'footage/manifest.json')))('footage manifest', () => {
       const manifest = () => manifestOf(name);
 
       test('has a viewport, a scale and plates with sizes and boxes', () => {

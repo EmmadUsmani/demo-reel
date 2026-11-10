@@ -1,6 +1,7 @@
 // The player core: which scene plays when, and how a frame is drawn. A frame is a pure function of
 // its time, so the preview, a still and the export all produce the same pixels.
 import { H, PH, PW, SCALE, W, type Cue, type Frame, type Line, type Scene, type SceneClass } from './scene';
+import { placeStops, type Stop } from './stops';
 
 export type TimelineEntry = {
   id: string;
@@ -150,6 +151,11 @@ export class Engine {
   narration(): (Line & { scene: string })[] {
     return this.timeline.flatMap((entry) => (this.scenes.get(entry.id)?.narration() ?? []).map((line) => ({ ...line, at: line.at + entry.start, until: line.until + entry.start, scene: entry.id })))
       .sort((a, b) => a.at - b.at);
+  }
+
+  /** Where a deck pauses, in video time (engine/stops.ts): only the loaded scenes'. */
+  stops(): Stop[] {
+    return placeStops(this.timeline, new Map([...this.scenes].map(([id, scene]) => [id, scene.stops()])));
   }
 
   /** The visible canvas as tightly packed RGBA, top row first. */

@@ -22,6 +22,7 @@ export default class Chapter extends Scene {
   }
 
   duration() { return DUR; }
+  stops() { return [DUR - 0.45 - 1 / 60]; }
   async prepare(f: Frame) { await this.player?.prepare(f.lt); }
 
   cues(): Cue[] {

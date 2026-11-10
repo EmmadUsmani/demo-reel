@@ -28,6 +28,7 @@ export default class TitleCard extends Scene {
   }
 
   duration() { return this.dur; }
+  stops() { return [this.exit - 1 / 60]; }
 
   narration(): Line[] {
     const line: string | undefined = this.ctx.params.line;

@@ -43,6 +43,7 @@ function setupExport() {
     timeline: engine.timeline.map(({ id, start, end }) => ({ id, start, end })),
     cues: engine.cues(),
     narration: engine.narration(),
+    stops: engine.stops(),
     async still(t: number, samples = 1, shutter = 0.5) { await engine.prepare(t, samples, shutter); engine.render(t, samples, shutter); },
     async png() {
       const blob = await new Promise<Blob>((done) => canvas.toBlob((b) => done(b!), 'image/png'));

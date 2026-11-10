@@ -25,6 +25,7 @@ export default class EndCard extends Scene {
 
   async init() { if (this.ctx.params.card) this.card = await loadCard(this.ctx.params.card); }
   duration() { return this.dur; }
+  stops() { return [this.dur - 0.7 - 1 / 60]; }
 
   narration(): Line[] {
     const line: string | undefined = this.ctx.params.line;

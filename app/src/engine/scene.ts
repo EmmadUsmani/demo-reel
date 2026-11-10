@@ -31,6 +31,11 @@ export abstract class Scene {
   abstract render(f: Frame): void;
   cues(): Cue[] { return []; }
   narration(): Line[] { return []; }
+  /**
+   * Where a deck pauses in this scene (scene-local, s): the moments each beat is fully built, a frame
+   * before what follows starts to move. None means the scene's last frame (engine/stops.ts).
+   */
+  stops(): number[] { return []; }
   /** How long the scene wants to run, s, when its timeline entry leaves that to it. */
   duration(): number | undefined { return undefined; }
   /** Load whatever frame t needs (decoded clip frames) before render(t) draws it. */

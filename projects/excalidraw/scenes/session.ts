@@ -15,6 +15,7 @@ const SHAPES_HOLD = 2.6; // on all three shapes
 const ARROW_HOLD = 3.2; // on the first arrow
 const DONE_HOLD = 4.0; // on the finished flow
 const END_HOLD = 0.5;
+const MORE_AT = 1.6; // after 'idea', when the line about the shape being drawn has been said
 
 export default class ExcalidrawSession extends ClipScene {
   protected source = { footage: 'excalidraw', clip: 'session', url: 'excalidraw.com' };
@@ -36,8 +37,8 @@ export default class ExcalidrawSession extends ClipScene {
   narration(): Line[] {
     return [
       { id: 'tool', at: this.at('tool') + 0.1, until: this.at('tool') + TOOL_HOLD - 0.1, text: 'Pick a tool. Each one has a single-key shortcut.' },
-      { id: 'draw', at: this.at('drawn') - 0.9, until: this.at('idea') + IDEA_HOLD - 0.1, text: 'Drag out the shape, press Enter, and type a label.' },
-      { id: 'more', at: this.at('idea') + 0.6, until: this.at('sketch') - 0.2, text: 'Diamonds and ellipses work the same way.' },
+      { id: 'draw', at: this.at('drawn') - 0.9, until: this.at('idea') + MORE_AT - 0.1, text: 'Drag out the shape, press Enter, and type a label.' },
+      { id: 'more', at: this.at('idea') + MORE_AT, until: this.at('sketch') - 0.2, text: 'Diamonds and ellipses work the same way.' },
       { id: 'three', at: this.at('share') + 0.1, until: this.at('share') + SHAPES_HOLD - 0.1, text: 'Three shapes, ready to connect.' },
       { id: 'arrow', at: this.at('share') + SHAPES_HOLD + 0.3, until: this.at('arrow') + ARROW_HOLD - 0.1, text: 'Pick the arrow, and drag from one shape to the next.' },
       { id: 'done', at: this.at('done') + 0.1, until: this.at('done') + DONE_HOLD - 0.1, text: 'A clean flow, and it all stays in your browser.' },

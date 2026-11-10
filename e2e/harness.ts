@@ -13,7 +13,24 @@ export const OUT = path.join(ROOT, 'out', `e2e-web-${EDIT}`);
 /** One build, server and browser for every suite in the run (e2e/all.e2e.ts stops them at the end). */
 let served: Promise<{ url: string; browser: Browser; stop: () => Promise<void> }> | undefined;
 export function serve() { return (served ??= start()); }
-export async function stopServing() { await (await served)?.stop(); }
+let developed: Promise<{ url: string; stop: () => void }> | undefined;
+/** A Vite dev server of the app (the preview page and ?export=1 are only there, not in a built player), on a port of its own. */
+export function serveDev() { return (developed ??= startDev()); }
+export async function stopServing() {
+  await (await served)?.stop();
+  (await developed)?.stop();
+}
+
+async function startDev(): Promise<{ url: string; stop: () => void }> {
+  const port = freePort();
+  const stop = startVite(['--port', String(port), '--strictPort'], { DEMO_REEL_NO_HMR: '1' });
+  const url = `http://localhost:${port}/`;
+  for (let i = 0; i < 200; i++) {
+    try { if ((await fetch(url)).ok) break; } catch { /* not up yet */ }
+    await Bun.sleep(100);
+  }
+  return { url, stop };
+}
 
 async function start(): Promise<{ url: string; browser: Browser; stop: () => Promise<void> }> {
   for (const need of [`projects/${EDIT}/footage/manifest.json`, `out/audio-${EDIT}/mix.wav`, `out/audio-${EDIT}/effects.wav`, `out/audio-${EDIT}/captions.json`]) {
@@ -71,3 +88,16 @@ export const fps = (page: Page, ms = 1000) => page.evaluate(async (ms) => {
   }
   return (n * 1000) / ms;
 }, ms);
+
+/** Poll in the page until `check` holds (no fixed sleeps): the player's handle is passed in. */
+export const until = (page: Page, check: (P: any) => boolean, timeout = 10_000) =>
+  page.waitForFunction(`(${check.toString()})(window.__player)`, null, { timeout });
+
+/** The player's own methods, driven through its handle. */
+export const seek = (page: Page, t: number) => page.evaluate((t) => (window as any).__player.seek(t), t);
+
+/** Wait until the player has drawn the frame for time `t`. */
+export const drawn = (page: Page, t: number) => page.waitForFunction((t) => (window as any).__player.drawn === t && (window as any).__player.t === t, t, { timeout: 10_000 });
+
+/** The written captions (captions.json, from audio.ts) the player shows. */
+export const readCaptions = async (): Promise<{ at: number; end: number; text: string }[]> => Bun.file(path.join(ROOT, `out/audio-${EDIT}/captions.json`)).json();

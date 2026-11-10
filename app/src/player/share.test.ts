@@ -14,6 +14,19 @@ describe('shareLinks', () => {
     expect(shareLinks(at, input).slide).toBe('https://example.com/demo/?mode=slides&slide=5');
   });
 
+  test('the presenter link opens the presenter view on the slide, 1-based', () => {
+    expect(shareLinks(at, input).presenter).toBe('https://example.com/demo/?view=presenter&slide=5');
+    expect(shareLinks(at, { ...input, slide: -1 }).presenter).toContain('slide=1');
+  });
+
+  test('links made from a presenter URL drop its view; the presenter link replaces it', () => {
+    const from = { ...at, search: '?edit=news&view=presenter&slide=2' };
+    const links = shareLinks(from, input);
+    expect(links.moment).toBe('https://example.com/demo/?edit=news&t=123.46');
+    expect(links.slide).toBe('https://example.com/demo/?edit=news&mode=slides&slide=5');
+    expect(links.presenter).toBe('https://example.com/demo/?edit=news&view=presenter&slide=5');
+  });
+
   test('before the first slide, the slide link names slide 1', () => {
     expect(shareLinks(at, { ...input, slide: -1 }).slide).toContain('slide=1');
   });
@@ -27,6 +40,7 @@ describe('shareLinks', () => {
     const links = shareLinks({ ...at, search: '?scene=pacing&t=9' }, { ...input, scene: 'pacing', sceneOnScreen: 'pacing' });
     expect(links.moment).toBe('https://example.com/demo/?scene=pacing&t=123.46');
     expect(links.slide).toBe('https://example.com/demo/?scene=pacing&mode=slides&slide=5');
+    expect(links.presenter).toBe('https://example.com/demo/?scene=pacing&view=presenter&slide=5');
     expect(links.embed).toContain('src="https://example.com/demo/?scene=pacing"');
   });
 
@@ -54,8 +68,9 @@ describe('shareLinks', () => {
     const { parseParams } = await import('./params');
     const links = shareLinks({ ...at, search: '?edit=news-digest&captions=1' }, input);
     const parse = (url: string) => { const u = new URL(url); return parseParams(u.search, u.hash); };
-    expect(parse(links.moment)).toMatchObject({ edit: 'news-digest', captions: true, t: 123.46, mode: 'video' });
+    expect(parse(links.moment)).toMatchObject({ edit: 'news-digest', captions: true, t: 123.46, view: 'player' });
     expect(parse(links.slide)).toMatchObject({ edit: 'news-digest', mode: 'slides', slide: 5 });
+    expect(parse(links.presenter)).toMatchObject({ edit: 'news-digest', view: 'presenter', slide: 5 });
     expect(parse(links.embed.match(/src="([^"]+)"/)![1]!.replaceAll('&#38;', '&'))).toMatchObject({ scene: 'pacing', edit: 'news-digest' });
   });
 });

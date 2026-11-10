@@ -38,6 +38,15 @@ export class Deck {
     return { kind: 'show', t: this.at(this.slide) };
   }
 
+  /** The slide after the one on screen (or being played to): its index, or null on the last. */
+  upNext(): number | null {
+    const next = (this.target ?? this.slide) + 1;
+    return next < this.count ? next : null;
+  }
+
+  /** The time slide `slide` shows (-1: the start). */
+  timeOf(slide: number) { return this.at(slide); }
+
   /** Playback reached `t`: true when the step has arrived and should hold there. */
   arrive(t: number): boolean {
     if (this.target === null || t < this.at(this.target)) return false;

@@ -1,4 +1,4 @@
-// Which caption, note lines, scene and start time go with a moment of the video. Pure, so it is tested
+// Which caption, scene and start time go with a moment of the video. Pure, so it is tested
 // without a browser (moments.test.ts).
 
 /** A line of narration as written, timed to its speech (captions.json), s. */
@@ -10,10 +10,11 @@ export function captionAt(captions: Caption[], t: number): Caption | undefined {
   return captions.find((c) => t >= c.at && t < c.end);
 }
 
-/** The lines said on the way to slide `k` (0-based): after the previous stop, up to and including this one. */
-export function notesFor(captions: Caption[], stops: number[], from: number, k: number): Caption[] {
-  if (k < 0) return [];
-  return captions.filter((c) => c.at > (stops[k - 1] ?? from) - 1e-6 && c.at <= stops[k]!);
+/** The span played, s: the whole edit, or the one timeline entry `scene` names (an embed). */
+export function spanOf(timeline: (Span & { id: string })[], scene: string | undefined, duration: number): Span {
+  const entry = scene ? timeline.find((e) => e.id === scene) : undefined;
+  if (scene && !entry) throw new Error(`no scene '${scene}' (scenes: ${timeline.map((e) => e.id).join(', ')})`);
+  return { start: entry?.start ?? 0, end: entry?.end ?? duration };
 }
 
 /** The scene on screen at `t`: of overlapping entries (a crossfade), the later one. */

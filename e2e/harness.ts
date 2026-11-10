@@ -111,3 +111,21 @@ export function buildSingle() {
   if (build.exitCode !== 0) throw new Error(`single build failed:\n${build.stderr}`);
   return (singled = SINGLE_OUT);
 }
+
+/** The presenter's view (?view=presenter), read through its test handle. */
+export const presenterState = (page: Page) => page.evaluate(() => {
+  const P = (window as any).__player;
+  const q = (selector: string) => document.querySelector(selector) as HTMLElement;
+  return {
+    slide: P.deck.slide as number, target: P.deck.target as number | null, stops: P.deck.stops as number[], t: P.t as number, playing: P.playing as boolean,
+    count: q('.p-count').textContent!, notes: q('.p-notes').textContent!, paragraphs: [...document.querySelectorAll('.p-notes p')].map((p) => p.textContent!),
+    elapsed: q('.p-elapsed').textContent!, pause: q('.p-pause').textContent!, stopwatch: P.stopwatch.state as string,
+    stillShown: !q('.p-still').hidden, endShown: !q('.p-end').hidden, prevDisabled: (q('.p-prev') as HTMLButtonElement).disabled, nextDisabled: (q('.p-fwd') as HTMLButtonElement).disabled,
+  };
+});
+
+/** Wait until the presenter has arrived on a slide (no step playing) and drawn it and the still of the one after. */
+export const presenterSettled = (page: Page) => page.waitForFunction(() => {
+  const P = (window as any).__player;
+  return P.deck.target === null && !P.playing && P.drawn === P.t && P.stillOf === P.deck.upNext();
+}, null, { timeout: 30_000 });

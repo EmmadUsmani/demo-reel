@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { captionAt, clockText, escapeHtml, notesFor, posterTime, sceneAt, startTime } from './moments';
+import { captionAt, clockText, escapeHtml, posterTime, sceneAt, spanOf, startTime } from './moments';
 
 const captions = [
   { at: 1, end: 3, text: 'First.' },
@@ -28,31 +28,14 @@ describe('captionAt', () => {
   });
 });
 
-describe('notesFor', () => {
-  const stops = [3, 8, 13];
-  test('the lines that start after the previous stop, up to and including this stop', () => {
-    expect(notesFor(captions, stops, 0, 0).map((c) => c.text)).toEqual(['First.']);
-    expect(notesFor(captions, stops, 0, 1).map((c) => c.text)).toEqual(['Second.', 'Third.']);
-    expect(notesFor(captions, stops, 0, 2).map((c) => c.text)).toEqual(['Fourth.']);
+describe('spanOf', () => {
+  const timeline = [{ id: 'a', start: 0, end: 10 }, { id: 'b', start: 9, end: 20 }];
+  test('the whole edit without a scene, and the scene\'s own range with one', () => {
+    expect(spanOf(timeline, undefined, 20)).toEqual({ start: 0, end: 20 });
+    expect(spanOf(timeline, 'b', 20)).toEqual({ start: 9, end: 20 });
   });
-
-  test('a line just after a stop belongs to the next slide, just before it to the one the stop ends', () => {
-    expect(notesFor([{ at: 3 + 1e-3, end: 4, text: 'x' }], stops, 0, 0)).toHaveLength(0);
-    expect(notesFor([{ at: 3 + 1e-3, end: 4, text: 'x' }], stops, 0, 1)).toHaveLength(1);
-    expect(notesFor([{ at: 3 - 1e-3, end: 4, text: 'x' }], stops, 0, 0)).toHaveLength(1);
-  });
-
-  test('before the first slide there are no notes', () => {
-    expect(notesFor(captions, stops, 0, -1)).toEqual([]);
-  });
-
-  test('the first slide counts from the start of the span, which is not 0 for an embed', () => {
-    expect(notesFor(captions, [8], 3, 0).map((c) => c.text)).toEqual(['Second.', 'Third.']);
-  });
-
-  test('every line lands on exactly one slide when the last stop is after the last line', () => {
-    const all = [0, 1, 2].flatMap((k) => notesFor(captions, [3, 8, 13], 0, k));
-    expect(all).toEqual(captions);
+  test('an unknown scene throws, naming the scenes', () => {
+    expect(() => spanOf(timeline, 'zz', 20)).toThrow("no scene 'zz' (scenes: a, b)");
   });
 });
 

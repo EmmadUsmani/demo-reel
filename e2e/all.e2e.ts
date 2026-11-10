@@ -9,5 +9,6 @@ import './layout.e2e';
 import './preview.e2e';
 import './slides.e2e';
 import './export.e2e';
+import './single.e2e';
 
 afterAll(stopServing);

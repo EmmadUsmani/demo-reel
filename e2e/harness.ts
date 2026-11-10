@@ -101,3 +101,13 @@ export const drawn = (page: Page, t: number) => page.waitForFunction((t) => (win
 
 /** The written captions (captions.json, from audio.ts) the player shows. */
 export const readCaptions = async (): Promise<{ at: number; end: number; text: string }[]> => Bun.file(path.join(ROOT, `out/audio-${EDIT}/captions.json`)).json();
+
+/** The single-file player (scripts/build.ts --single), built once per run beside the folder build. */
+export const SINGLE_OUT = path.join(ROOT, 'out', `e2e-single-${EDIT}.html`);
+let singled: string | undefined;
+export function buildSingle() {
+  if (singled) return singled;
+  const build = Bun.spawnSync(['bun', 'scripts/build.ts', '--edit', EDIT, '--single', '--out', SINGLE_OUT], { cwd: ROOT, stderr: 'pipe' });
+  if (build.exitCode !== 0) throw new Error(`single build failed:\n${build.stderr}`);
+  return (singled = SINGLE_OUT);
+}

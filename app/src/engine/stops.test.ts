@@ -31,4 +31,44 @@ describe('placeStops', () => {
   test('scenes not loaded have no stops, and duplicates collapse', () => {
     expect(placeStops(timeline, new Map([['b', [5, 5, 5.001]]]))).toEqual([{ t: 14, scene: 'b' }]);
   });
+
+  test("a scene's stops come out in time order even when it lists them out of order", () => {
+    const stops = placeStops(timeline, new Map([['c', [8, 2, 5]]]));
+    expect(stops.map((s) => s.t)).toEqual([22, 25, 28]);
+  });
+
+  test('a stop before the scene starts is moved to its first frame, and one past its end to its last', () => {
+    const stops = placeStops([{ id: 'only', start: 4, end: 8 }], new Map([['only', [-3, 50]]]));
+    expect(stops[0]!.t).toBe(4);
+    expect(stops[1]!.t).toBeCloseTo(8 - FRAME);
+  });
+
+  test('every stop of every scene lies inside its own scene and outside every crossfade', () => {
+    const fades = [
+      { id: 'a', start: 0, end: 10 },
+      { id: 'b', start: 8, end: 20 },
+      { id: 'c', start: 18, end: 30 },
+      { id: 'd', start: 30, end: 36 },
+    ];
+    const own = new Map(fades.map((e) => [e.id, Array.from({ length: 40 }, (_, i) => (i - 5) * 0.7)]));
+    const stops = placeStops(fades, own);
+    expect(stops.length).toBeGreaterThan(0);
+    for (const stop of stops) {
+      const entry = fades.find((e) => e.id === stop.scene)!;
+      expect(stop.t).toBeGreaterThanOrEqual(entry.start);
+      expect(stop.t).toBeLessThan(entry.end);
+      const others = fades.filter((e) => e.id !== stop.scene);
+      // never while a second scene is on screen
+      expect(others.some((e) => stop.t >= e.start && stop.t < e.end)).toBe(false);
+    }
+    expect(stops.map((s) => s.t)).toEqual([...stops.map((s) => s.t)].sort((x, y) => x - y));
+  });
+
+  test('a lone scene with no stops stops one frame before its end', () => {
+    expect(placeStops([{ id: 'x', start: 0, end: 5 }], new Map([['x', []]]))).toEqual([{ t: 5 - FRAME, scene: 'x' }]);
+  });
+
+  test('an empty timeline has no stops', () => {
+    expect(placeStops([], new Map())).toEqual([]);
+  });
 });

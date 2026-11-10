@@ -43,6 +43,7 @@ export function trimSpeech(raw: Float32Array, rate: number) {
   let first = 0, last = raw.length - 1;
   while (first < raw.length && Math.abs(raw[first]!) < 0.01) first++;
   while (last > 0 && Math.abs(raw[last]!) < 0.01) last--;
+  if (first >= raw.length) return { samples: new Float32Array(0), speech: 0 }; // nothing but silence
   const trimmed = raw.subarray(Math.max(0, first - Math.round(0.04 * rate)), Math.min(raw.length, last + Math.round(0.15 * rate)));
   return { samples: trimmed, speech: (last - first) / rate };
 }
@@ -242,6 +243,7 @@ export function voiceTrack(clips: Clip[], N: number) {
   for (const { line, samples } of clips) {
     let peak = 0;
     for (const v of samples) peak = Math.max(peak, Math.abs(v));
+    if (peak === 0) continue; // nothing to scale: dividing by it would fill the track with NaN
     const start = Math.round(line.at * RATE) - Math.round(0.04 * RATE);
     for (let i = 0; i < samples.length; i++) if (start + i >= 0 && start + i < N) vo[start + i]! += (samples[i]! / peak) * 0.6;
   }

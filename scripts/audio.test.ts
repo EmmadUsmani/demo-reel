@@ -84,6 +84,11 @@ describe('trimSpeech', () => {
     expect(samples.length).toBe(120);
   });
 
+  test('an all-silent clip has no speech and nothing to keep', () => {
+    expect(trimSpeech(new Float32Array(2000), 1000)).toEqual({ samples: new Float32Array(0), speech: 0 });
+    expect(trimSpeech(new Float32Array(0), 1000)).toEqual({ samples: new Float32Array(0), speech: 0 });
+  });
+
   test('works out the lead-in and tail in samples at the clip\'s own rate', () => {
     const { samples } = trimSpeech(padded(10_000, 24_000, 10_000), 24_000);
     expect(samples.length).toBe(Math.round(0.04 * 24_000) + 23_999 + Math.round(0.15 * 24_000));
@@ -267,6 +272,13 @@ describe('voiceTrack', () => {
     expect(peak(voiceTrack([clip({ at: 3.9 }, 1, sine(RATE, 1))], N))).toBeGreaterThan(0.5);
     expect(peak(voiceTrack([clip({ at: 100 }, 1, sine(RATE, 1))], N))).toBe(0);
     expect(peak(voiceTrack([clip({ at: 0 }, 1, sine(RATE, 1))], N), 0, 100)).toBeGreaterThan(0); // the lead-in before 0 is cut, the rest stays
+  });
+
+  test('a clip with nothing in it adds silence, not NaN', () => {
+    const track = voiceTrack([clip({ at: 1 }, 0, new Float32Array(1000)), clip({ id: 'b', at: 2 }, 1, sine(1000, 0.5))], N);
+    expect(track.every(Number.isFinite)).toBe(true);
+    expect(peak(track, 0, RATE * 2 - 2000)).toBe(0);
+    expect(peak(track)).toBeCloseTo(0.6, 5);
   });
 
   test('no clips is silence', () => {

@@ -1,22 +1,15 @@
 // The single-file player (scripts/build.ts --single), end to end in headless Chrome: opened from file://,
 // with no server, and under the strict policy of a Claude artifact. bun run test:e2e.
 import { beforeAll, describe, expect, test } from 'bun:test';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import type { Page } from 'playwright-core';
-import { buildSingle, open, readCaptions, ROOT, serve, state } from './harness';
+import { buildSingle, open, readCaptions, ROOT, serve, serveAsArtifact, state } from './harness';
 
 let server: Awaited<ReturnType<typeof serve>>;
 let file: string;
 beforeAll(async () => { server = await serve(); file = buildSingle(); }, 240_000);
 
-/** An artifact's rules: scripts and styles inline, fonts only from data, media and fetches only from data and blob. */
-const CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src data: blob:";
-const withCsp = () => {
-  const copy = file.replace(/\.html$/, '-csp.html');
-  writeFileSync(copy, readFileSync(file, 'utf8').replace('<head>', `<head><meta http-equiv="Content-Security-Policy" content="${CSP}">`));
-  return copy;
-};
 const fileUrl = (f: string, suffix = '') => `file://${f}${suffix}`;
 
 /** Whether the canvas shows a picture: its pixels, shrunk to a grid, are not all one colour. */
@@ -91,8 +84,8 @@ describe('opened from file://', () => {
 
 describe('under an artifact\'s content security policy', () => {
   test('plays, with sound and captions, and no policy violation', async () => {
-    const copy = withCsp();
-    const { page, problems } = await open(server.browser, fileUrl(copy));
+    const host = serveAsArtifact(file);
+    const { page, problems } = await open(server.browser, host.url);
     expect(await drawsSomething(page)).toBeGreaterThan(8);
     const line = (await readCaptions()).find((c) => c.text.includes('VM'))!;
     await page.click('.big');
@@ -104,12 +97,22 @@ describe('under an artifact\'s content security policy', () => {
     expect((await state(page)).caption).toBe(line.text);
     expect(problems).toEqual([]);
     await page.close();
+    host.stop();
   }, 60_000);
 
-  test('the policy is really in force: a request outside data and blob is refused', async () => {
-    const { page } = await open(server.browser, fileUrl(withCsp()));
-    const refused = await page.evaluate(() => fetch('https://example.com/').then(() => false, () => true));
-    expect(refused).toBe(true);
+  test('the policy is really in force: a sandboxed origin where no connection is allowed, not even to a data: URL', async () => {
+    const host = serveAsArtifact(file);
+    const { page } = await open(server.browser, host.url);
+    expect(await page.evaluate(() => origin)).toBe('null');
+    const refused = (url: string) => page.evaluate((u) => new Promise<boolean>((done) => {
+      const request = new XMLHttpRequest(); // the page's fetch is the shim's: ask the browser directly
+      request.onload = () => done(false);
+      request.onerror = () => done(true);
+      try { request.open('GET', u); request.send(); } catch { done(true); }
+    }), url);
+    expect(await refused('https://example.com/')).toBe(true);
+    expect(await refused('data:text/plain,hi')).toBe(true);
     await page.close();
+    host.stop();
   }, 60_000);
 });

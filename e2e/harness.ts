@@ -141,3 +141,15 @@ export function buildSingleOf(edit: string) {
   }
   return singles.get(edit)!;
 }
+
+/**
+ * A Claude artifact's rules at their strictest: a sandboxed frame (an opaque origin), scripts and styles inline,
+ * images, media and fonts only from data and blob, and no connections at all.
+ */
+export const ARTIFACT_CSP = "sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'";
+
+/** Serve one HTML file under ARTIFACT_CSP, as a response header the way a host sends it (a meta tag can't sandbox). */
+export function serveAsArtifact(file: string): { url: string; stop: () => void } {
+  const server = Bun.serve({ port: 0, fetch: () => new Response(Bun.file(file), { headers: { 'content-type': 'text/html; charset=utf-8', 'content-security-policy': ARTIFACT_CSP } }) });
+  return { url: `http://localhost:${server.port}/`, stop: () => server.stop(true) };
+}

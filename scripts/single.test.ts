@@ -116,8 +116,21 @@ describe('the fetch shim', () => {
   test('passes absolute URLs of other places on to the real fetch', async () => {
     const { win, real } = fakeWindow();
     installShim(files, win);
-    for (const url of ['https://example.com/footage/x/a.png', 'data:text/plain,hi', 'blob:null/123', 'file:///elsewhere/a.png']) expect(await (await win.fetch(url)).text()).toBe('network');
-    expect(real).toHaveLength(4);
+    for (const url of ['https://example.com/footage/x/a.png', 'blob:null/123', 'file:///elsewhere/a.png']) expect(await (await win.fetch(url)).text()).toBe('network');
+    expect(real).toHaveLength(3);
+  });
+
+  test('reads data: URLs itself (the fonts), never through the network: an artifact allows no connections', async () => {
+    const { win, real } = fakeWindow();
+    installShim(files, win);
+    const font = await win.fetch(`data:font/woff2;base64,${btoa('wOF2\u0000\u00ff')}`);
+    expect(font.headers.get('content-type')).toBe('font/woff2');
+    expect([...new Uint8Array(await font.arrayBuffer())]).toEqual([...'wOF2\u0000\u00ff'].map((c) => c.charCodeAt(0)));
+    expect(await (await win.fetch('data:text/plain,hi%20there%20%E2%9C%93')).text()).toBe('hi there ✓');
+    expect((await win.fetch('data:,x')).headers.get('content-type')).toBe('text/plain');
+    expect(await (await win.fetch('DATA:application/json;charset=utf-8;base64,' + btoa('{"a":1}'))).json()).toEqual({ a: 1 });
+    expect(await (await win.fetch(new URL('data:text/plain,u'))).text()).toBe('u');
+    expect(real).toEqual([]);
   });
 
   test('works on a page whose base is not a hierarchical URL (an artifact frame)', async () => {

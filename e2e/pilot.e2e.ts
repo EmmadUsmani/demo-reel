@@ -5,7 +5,7 @@ import { mkdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import type { Page } from 'playwright-core';
 import { ARTIFACT_LIMIT } from '../scripts/single-lib';
-import { buildSingleOf, open, presenterSettled, presenterState, ROOT, serve } from './harness';
+import { buildSingleOf, open, presenterSettled, presenterState, ROOT, serve, serveAsArtifact } from './harness';
 
 const DECK = 'news-digest-deck';
 const SHOTS = path.join(ROOT, 'out', 'shots');
@@ -123,4 +123,29 @@ describe('the pilot deck in the presenter view (#presenter)', () => {
     expect(problems).toEqual([]);
     await page.close();
   }, 90_000);
+});
+
+describe('the pilot deck as a Claude artifact serves it (sandboxed, no connections)', () => {
+  test('steps through every slide, and the presenter view shows every slide\'s notes, with no problems', async () => {
+    const expected = authoredNotes();
+    const host = serveAsArtifact(file);
+    const deck = await open(server.browser, host.url);
+    for (let k = 1; k <= expected.length; k++) {
+      await deck.page.keyboard.press('ArrowRight');
+      await arrived(deck.page);
+      expect(await coloursOf(deck.page, 'canvas'), `slide ${k} is blank`).toBeGreaterThan(8);
+    }
+    expect(deck.problems).toEqual([]);
+    await deck.page.close();
+
+    const presenter = await open(server.browser, `${host.url}#presenter`);
+    for (let k = 0; k < expected.length; k++) {
+      await presenter.page.keyboard.press('ArrowRight');
+      await presenterSettled(presenter.page);
+      expect((await presenterState(presenter.page)).paragraphs, `slide ${k + 1}`).toEqual(expected[k]!);
+    }
+    expect(presenter.problems).toEqual([]);
+    await presenter.page.close();
+    host.stop();
+  }, 240_000);
 });

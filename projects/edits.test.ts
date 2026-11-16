@@ -31,7 +31,7 @@ const RESPELLINGS: Record<string, [spoken: string, written: string][]> = {
 const CUE_KINDS = ['click', 'key', 'drop', 'whoosh-in', 'whoosh-out', 'whoosh-across', 'pop', 'swish', 'land', 'chime', 'tick', 'wheel'];
 
 test('there is an edit to test, and every project directory with a timeline is one', () => {
-  expect(projectNames()).toEqual(['excalidraw', 'hoppscotch', 'news-digest', 'news-digest-deck', 'openstreetmap', 'qiyami', 'todomvc', 'vite']);
+  expect(projectNames()).toEqual(['excalidraw', 'hoppscotch', 'news-digest', 'news-digest-deck', 'openstreetmap', 'qiyami', 'qiyami-deck', 'todomvc', 'vite']);
 });
 
 for (const name of projectNames()) {

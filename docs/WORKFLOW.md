@@ -144,6 +144,8 @@ An edit can be a presentation instead of a video: set `deck: true` in its `timel
 - `bun scripts/build.ts --edit <name> --single` writes one `.html` (at most 16 MiB to publish as a Claude artifact); open it with `#presenter` for the presenter's view (notes, next slide, timer), or run `bun scripts/slides.ts` for the static deck;
 - motion that should go on while a slide is held (the backdrop drift, a pulse, packets flowing along an edge) uses `f.ambient`, not `f.t`; it is `f.t` in the video and in stills, so nothing else changes (ENGINE.md, "Writing a scene");
 
+For a deck that keeps its narration (stepped, but self-running: a voice on every step), set `mode: 'slides'` instead of `deck: true`, keep the lines, and hold each beat until its line is said: a stop must come after the line it follows ends, which `scripts/audio.ts` checks. `projects/qiyami-deck/` is the example.
+
 Look at a still at every stop, and read `slides.json` to check the notes. `projects/news-digest-deck/` is the worked example (eight slides made from news-digest's scenes), with `deck.test.ts` and `e2e/pilot.e2e.ts` as its tests.
 
 ## Iterating on feedback

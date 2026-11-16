@@ -15,6 +15,12 @@ export type Edit = {
    * the wall clock and asks for no soundtrack. `?mode=video` and the Slides toggle still work.
    */
   deck?: boolean;
+  /**
+   * The mode the player opens in. `'slides'` makes a narrated deck: each step plays to the next stop with its
+   * soundtrack, narration on (`n` turns the voice off, `m` mutes), so every line must end before the stop it plays
+   * towards (scripts/audio.ts refuses one that a stop would cut). A `deck` opens in slides without this.
+   */
+  mode?: 'video' | 'slides';
   /** The frame the player shows before the first play: `at` seconds into the entry `scene`. */
   poster?: { scene: string; at: number };
 };

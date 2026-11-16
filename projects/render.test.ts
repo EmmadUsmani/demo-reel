@@ -11,6 +11,9 @@ afterAll(() => restore());
 
 type Loaded = Awaited<ReturnType<typeof project>>;
 
+/** Decks made from another project's scenes, and whose footage they show (their treatments). */
+const FOOTAGE_OF: Record<string, string> = { 'news-digest-deck': 'news-digest', 'qiyami-deck': 'qiyami' };
+
 /** Times worth drawing: a regular grid, the edit's ends, each scene's start, crossfade, middle and last moment, and every stop. */
 function sweep({ engine }: Loaded) {
   const times = new Set<number>([0, engine.duration - 1e-3, engine.duration + 1]);
@@ -63,10 +66,11 @@ for (const name of projectNames()) {
       for (const t of [...times].reverse()) expect((await frame(loaded, t)).calls, `t=${t}`).toEqual(first.get(t)!);
     });
 
-    test("only this project's footage is used", async () => {
+    test("only this project's footage is used (or the project's it is a deck of)", async () => {
       const before = requested.length;
       for (const t of sweep(loaded)) await frame(loaded, t);
-      for (const url of [...loaded.files, ...requested.slice(before)]) expect(url.startsWith(`footage/${name}/`), url).toBe(true);
+      const own = `footage/${FOOTAGE_OF[name] ?? name}/`;
+      for (const url of [...loaded.files, ...requested.slice(before)]) expect(url.startsWith(own), url).toBe(true);
     });
   });
 }

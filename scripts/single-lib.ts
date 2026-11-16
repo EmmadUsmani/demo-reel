@@ -44,10 +44,7 @@ export function singlePage(html: string, read: (url: string) => string, files: E
   return body.replace('</head>', () => `${sheets.join('')}${data}\n${shim}\n</head>`).replace('</body>', () => `${code}</body>`);
 }
 
-/** Warnings about a single file's size, and about clips (every frame of them would be in the file). */
-export function sizeWarnings(bytes: number, clips: number): string[] {
-  const warnings: string[] = [];
-  if (bytes > ARTIFACT_LIMIT) warnings.push(`${(bytes / 1048576).toFixed(1)} MiB is over the 16 MiB a Claude artifact's page can be`);
-  if (clips) warnings.push(`the edit records ${clips} clip${clips === 1 ? '' : 's'}: every frame is embedded, and a file that size is not suited to be one page`);
-  return warnings;
+/** Warnings about a single file's size. */
+export function sizeWarnings(bytes: number): string[] {
+  return bytes > ARTIFACT_LIMIT ? [`${(bytes / 1048576).toFixed(1)} MiB is over the 16 MiB a Claude artifact's page can be`] : [];
 }

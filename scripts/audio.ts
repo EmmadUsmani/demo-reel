@@ -7,14 +7,15 @@
 // HTML player (scripts/build.ts) it also writes effects.wav (the effects alone at the mix's gain, not
 // ducked: the soundtrack with the narration off) and captions.json (each line's on-screen text, timed
 // to its speech).
-// Refuses to mix when a narration line overruns its beat, unless --force.
+// Refuses to mix when a narration line overruns its beat, unless --force; and for an edit that opens in slides
+// mode (Edit.mode), when a stop falls inside a line, which the deck would cut off there.
 import { KokoroTTS } from 'kokoro-js';
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { openApp } from './lib';
 import {
-  audioOptions, captionsFor, CEILING, clipFile, duckEnvelope, fitReport, limit, lufs, mixDown, RATE, readWav, renderEffects, resample, TARGET_LUFS,
+  audioOptions, captionsFor, CEILING, clipFile, duckEnvelope, fitReport, limit, lufs, mixDown, RATE, readWav, renderEffects, resample, stopCuts, TARGET_LUFS,
   trimSpeech, voiceTrack, writeWav, type Clip, type Cue, type Line,
 } from './audio-lib';
 
@@ -24,8 +25,8 @@ const { edit: EDIT, out: OUT, voice: VOICE, speed: SPEED, force: FORCE } = audio
 // ------------------------------------------------------------------ what the app declares
 
 const { browser, page, stop } = await openApp({ edit: EDIT });
-const declared: { cues: Cue[]; narration: Line[]; duration: number; timeline: { id: string; start: number; end: number }[] } =
-  await page.evaluate(() => { const V = (window as any).__video; return { cues: V.cues, narration: V.narration, duration: V.duration, timeline: V.timeline }; });
+const declared: { cues: Cue[]; narration: Line[]; duration: number; timeline: { id: string; start: number; end: number }[]; stops: { t: number }[]; mode: string } =
+  await page.evaluate(() => { const V = (window as any).__video; return { cues: V.cues, narration: V.narration, duration: V.duration, timeline: V.timeline, stops: V.stops, mode: V.mode }; });
 await browser.close();
 stop();
 const { cues, narration, duration } = declared;
@@ -61,6 +62,15 @@ console.log(fit.lines.join('\n'));
 if (fit.overruns && !FORCE) {
   console.error(`\n${fit.overruns} line(s) overrun their beat: shorten the line or hold the beat longer (or --force).`);
   process.exit(1);
+}
+const cuts = stopCuts(clips, declared.stops.map((s) => s.t));
+if (cuts.length) {
+  const slides = declared.mode === 'slides';
+  console[slides ? 'error' : 'log'](`\n${cuts.length} line(s) cut by a stop in slides mode:\n${cuts.join('\n')}`);
+  if (slides && !FORCE) {
+    console.error('this edit opens in slides mode: end each line before its stop (shorten it, or hold the beat longer and move the stop), or --force.');
+    process.exit(1);
+  }
 }
 
 // ------------------------------------------------------------------ sound effects

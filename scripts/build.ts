@@ -11,12 +11,14 @@
 //                              captions.json, from out/audio-<name>/
 // --single writes ONE .html instead: the code and CSS inline, and the footage and soundtrack embedded
 // with a small fetch shim ahead of the code (scripts/single-shim.ts), so the file plays from file://, any
-// static host or a Claude artifact. It warns past 16 MiB (the most an artifact's page can be) and for an edit with clips.
+// static host or a Claude artifact. A recorded clip goes in compacted (build-lib.ts, compactClips): a frame the
+// page has not visibly changed from the last is that frame again, and the frames kept are WebP. It warns past
+// 16 MiB, the most an artifact's page can be.
 import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { withFootage } from './bundled-projects';
-import { buildOptions, clipCount, copyFootage, encodeSoundtrack, listFiles, megabytes, run } from './build-lib';
+import { buildOptions, compactClips, copyFootage, encodeSoundtrack, listFiles, megabytes, run, SAME_FRAME } from './build-lib';
 import { embedFiles, singlePage, sizeWarnings } from './single-lib';
 import { VITE } from './lib';
 
@@ -37,7 +39,13 @@ try {
 
   // ---------------------------------------------------------------- the footage and the soundtrack
   const stage = SINGLE ? path.join(work, 'stage') : OUT;
-  for (const name of footageProjects) await copyFootage(name, path.join(PROJECTS, name, 'footage'), path.join(stage, 'footage', name));
+  for (const name of footageProjects) {
+    await copyFootage(name, path.join(PROJECTS, name, 'footage'), path.join(stage, 'footage', name));
+    if (SINGLE) {
+      const { frames, files } = await compactClips(path.join(stage, 'footage', name));
+      if (frames) console.log(`footage of ${name}: ${frames} clip frames held in ${files} WebP files (a frame within ${SAME_FRAME}/255 of the last kept is that frame)`);
+    }
+  }
   const audioOut = path.join(stage, 'audio', EDIT);
   await encodeSoundtrack(EDIT, AUDIO, audioOut, BITRATE, ROOT);
 
@@ -51,9 +59,8 @@ try {
     const page = singlePage(readFileSync(path.join(built, 'index.html'), 'utf8'), (url) => readFileSync(path.join(built, url), 'utf8'), files);
     mkdirSync(path.dirname(OUT), { recursive: true });
     writeFileSync(OUT, page);
-    const clips = (await Promise.all(footageProjects.map((name) => clipCount(path.join(PROJECTS, name, 'footage'))))).reduce((a, b) => a + b, 0);
     console.log(`single-file player for ${EDIT}: ${OUT}  (${(statSync(OUT).size / 1e6).toFixed(1)} MB, ${Object.keys(files).length} embedded files; footage of: ${footageProjects.join(', ') || 'none'})`);
-    for (const warning of sizeWarnings(statSync(OUT).size, clips)) console.warn(`warning: ${warning}`);
+    for (const warning of sizeWarnings(statSync(OUT).size)) console.warn(`warning: ${warning}`);
   }
 } finally {
   rmSync(work, { recursive: true, force: true });

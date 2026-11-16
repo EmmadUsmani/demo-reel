@@ -130,6 +130,12 @@ describe('startOf', () => {
     expect(startOf({}, { deck: true })).toEqual({ mode: 'slides', narration: false });
   });
 
+  test('an edit that opens in slides (a narrated deck): slides mode, narration on', () => {
+    expect(startOf({}, { mode: 'slides' })).toEqual({ mode: 'slides', narration: true });
+    expect(startOf({ mode: 'video', narration: false }, { mode: 'slides' })).toEqual({ mode: 'video', narration: false });
+    expect(startOf(parseParams('', '#slide-3'), { mode: 'slides' })).toEqual({ mode: 'slides', narration: true });
+  });
+
   test('what the URL chose wins over the edit, on a deck and on a video', () => {
     expect(startOf({ mode: 'video' }, { deck: true }).mode).toBe('video');
     expect(startOf({ narration: true }, { deck: true }).narration).toBe(true);

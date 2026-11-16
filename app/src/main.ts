@@ -3,6 +3,7 @@ import { loadFonts } from './engine/assets';
 import { Engine } from './engine/engine';
 import { applyTheme } from './engine/palette';
 import { PH, PW, SCALE } from './engine/scene';
+import { startOf } from './player/params';
 import { loopRange, parsePreview, previewKey } from './preview';
 import { EDITS } from './timeline';
 
@@ -38,6 +39,8 @@ function setupExport() {
   window.__video = {
     engine,
     title: TITLE,
+    /** The mode the player opens this edit in (scripts/audio.ts holds a slides edit's lines to its stops). */
+    mode: startOf({}, edit!).mode,
     duration: engine.duration,
     errors: engine.errors,
     scale: SCALE,

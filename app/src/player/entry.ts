@@ -8,7 +8,8 @@
 //   ?captions=1     captions on          ?narration=0|1 the soundtrack without the voice (or with it)
 //   ?view=presenter the presenter's view of the deck: this slide, the next, notes, timer (presenter.ts)
 // An edit that is a deck (Edit.deck) opens in slides mode with the narration off and asks for no
-// soundtrack; ?mode=video or ?narration=1 chooses otherwise. A host that passes only a #name to the
+// soundtrack; ?mode=video or ?narration=1 chooses otherwise. An edit with `mode: 'slides'` (a narrated deck)
+// opens in slides mode with its soundtrack and narration. A host that passes only a #name to the
 // page (a Claude artifact) can use #slides, #slide-<n>, #scene-<id>, #presenter and #presenter-<n> instead;
 // a #name wins over the query it stands for (#slides is the audience view even under ?view=presenter).
 import './player.css';

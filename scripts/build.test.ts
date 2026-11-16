@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { buildOptions, clipCount, copyFootage, dirSize, encodeSoundtrack, footageFiles, listFiles, megabytes, mp3Args } from './build-lib';
+import sharp from 'sharp';
+import { buildOptions, compactClips, copyFootage, dirSize, encodeSoundtrack, footageFiles, listFiles, megabytes, mp3Args, SAME_FRAME, sameFrame } from './build-lib';
 import { RATE, writeWav } from './audio-lib';
 import { ffmpegTest, probeAudio, sineWav, tempDir } from './test-support';
 
@@ -202,15 +203,50 @@ describe('the encoded soundtrack lines up with the WAV it came from', () => {
   });
 });
 
-describe('clipCount and listFiles', () => {
-  test('clipCount counts the manifest clips, and is 0 without footage', async () => {
-    expect(await clipCount(tmp.dir)).toBe(0);
-    lay({ 'manifest.json': JSON.stringify({ shots: {}, clips: { a: { dir: 'a', frames: [] }, b: { dir: 'b', frames: [] } } }) });
-    expect(await clipCount(tmp.dir)).toBe(2);
-    lay({ 'manifest.json': JSON.stringify({ shots: {} }) });
-    expect(await clipCount(tmp.dir)).toBe(0);
+describe('sameFrame', () => {
+  test('within SAME_FRAME on every channel is the same frame; one channel past it, or another size, is not', () => {
+    const a = new Uint8Array([10, 200, 30, 40]);
+    expect(sameFrame(a, a)).toBe(true);
+    expect(sameFrame(a, new Uint8Array([10 + SAME_FRAME, 200 - SAME_FRAME, 30, 40]))).toBe(true);
+    expect(sameFrame(a, new Uint8Array([10, 200, 30 + SAME_FRAME + 1, 40]))).toBe(false);
+    expect(sameFrame(a, new Uint8Array([10, 200, 30]))).toBe(false);
+  });
+});
+
+describe('compactClips', () => {
+  /** A 16×8 JPEG of one grey level, with a white square at (x, 0) when `square` is set. */
+  const plate = (level: number, square?: number) => {
+    const pixels = Buffer.alloc(16 * 8 * 3, level);
+    if (square !== undefined) for (let y = 0; y < 4; y++) for (let x = square; x < square + 4; x++) pixels.fill(255, (y * 16 + x) * 3, (y * 16 + x) * 3 + 3);
+    return sharp(pixels, { raw: { width: 16, height: 8, channels: 3 } }).jpeg({ quality: 100 }).toBuffer();
+  };
+  const frames = (...files: string[]) => files.map((file, i) => ({ file, x: i, y: 0, down: false }));
+
+  test('a frame the page has not visibly changed is the last kept frame; the kept ones become WebP, the rest are gone', async () => {
+    mkdirSync(path.join(tmp.dir, 'run'));
+    // 0 and 1 differ by a drift under SAME_FRAME; 2 shows a square (a real change); 3 drifts from 2; 4 moves the square
+    const plates = [await plate(100), await plate(100 + SAME_FRAME / 2), await plate(100, 0), await plate(104, 0), await plate(100, 8)];
+    plates.forEach((bytes, i) => writeFileSync(path.join(tmp.dir, 'run', `${i}.jpg`), bytes));
+    lay({ 'manifest.json': JSON.stringify({ shots: { a: { file: 'a.png' } }, clips: { run: { dir: 'run', fps: 60, frames: frames('0.jpg', '1.jpg', '2.jpg', '3.jpg', '4.jpg') } } }), 'a.png': 'A' });
+
+    expect(await compactClips(tmp.dir)).toEqual({ frames: 5, files: 3 });
+    const manifest = JSON.parse(readFileSync(path.join(tmp.dir, 'manifest.json'), 'utf8'));
+    expect(manifest.clips.run.frames.map((f: { file: string }) => f.file)).toEqual(['0.webp', '0.webp', '2.webp', '2.webp', '4.webp']);
+    expect(manifest.clips.run.frames[1]).toEqual({ file: '0.webp', x: 1, y: 0, down: false }); // the rest of a frame is kept
+    expect(manifest.clips.run.fps).toBe(60);
+    expect(tree(tmp.dir)).toEqual(['a.png', 'manifest.json', 'run/0.webp', 'run/2.webp', 'run/4.webp']);
+    expect((await sharp(path.join(tmp.dir, 'run/2.webp')).metadata()).format).toBe('webp');
   });
 
+  test('footage with no clips, or no footage, is left alone', async () => {
+    expect(await compactClips(tmp.dir)).toEqual({ frames: 0, files: 0 });
+    lay({ 'manifest.json': JSON.stringify({ shots: { a: { file: 'a.png' } } }), 'a.png': 'A' });
+    expect(await compactClips(tmp.dir)).toEqual({ frames: 0, files: 0 });
+    expect(tree(tmp.dir)).toEqual(['a.png', 'manifest.json']);
+  });
+});
+
+describe('listFiles', () => {
   test('listFiles is every file below a folder, relative with / and sorted', () => {
     lay({ 'b.txt': '', 'a/z.txt': '', 'a/deep/y.txt': '' });
     expect(listFiles(tmp.dir)).toEqual(['a/deep/y.txt', 'a/z.txt', 'b.txt']);

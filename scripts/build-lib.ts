@@ -1,6 +1,7 @@
 // The parts of scripts/build.ts that decide things, kept apart from the Vite build so they can be tested.
-import { cpSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
 import path from 'node:path';
+import sharp from 'sharp';
 import { parseArgs } from './lib';
 
 export type BuildOptions = { edit: string; out: string; bitrate: string; project: string; audio: string; single: boolean };
@@ -35,6 +36,52 @@ type Manifest = {
   clips?: Record<string, { dir: string; frames: { file: string }[] }>;
 };
 
+/**
+ * How far (0..255, any channel of any pixel) a recorded frame may be from the frame before it and still be that
+ * frame: a live page's backdrop drifts by a few levels from frame to frame (qiyami's, under 12), while anything
+ * that changes on the page (a digit, a sheet, a typed letter) moves pixels by well over a hundred.
+ */
+export const SAME_FRAME = 16;
+
+/**
+ * A staged footage folder made small enough to embed in one page (build.ts --single): in each clip, a frame within
+ * SAME_FRAME of the last one kept is that frame (the manifest names the kept file again), and the kept frames are
+ * re-encoded as WebP at `quality`. Shots and extras are left as they are. Rewrites the folder's manifest.json in
+ * place; returns how many frames the clips record and how many files now hold them.
+ */
+export async function compactClips(footage: string, quality = 82): Promise<{ frames: number; files: number }> {
+  const manifestFile = path.join(footage, 'manifest.json');
+  if (!existsSync(manifestFile)) return { frames: 0, files: 0 };
+  const manifest: Manifest = await Bun.file(manifestFile).json();
+  let frames = 0, files = 0;
+  for (const clip of Object.values(manifest.clips ?? {})) {
+    const originals = new Set(clip.frames.map((f) => f.file));
+    let kept: { pixels: Buffer; file: string } | null = null;
+    for (const frame of clip.frames) {
+      frames++;
+      const from = path.join(footage, clip.dir, frame.file);
+      const pixels = await sharp(from).removeAlpha().raw().toBuffer();
+      if (!kept || !sameFrame(pixels, kept.pixels)) {
+        const file = `${frame.file.replace(/\.[^.]+$/, '')}.webp`;
+        await sharp(from).webp({ quality }).toFile(path.join(footage, clip.dir, file));
+        kept = { pixels, file };
+        files++;
+      }
+      frame.file = kept.file;
+    }
+    for (const file of originals) if (!file.endsWith('.webp')) rmSync(path.join(footage, clip.dir, file));
+  }
+  await Bun.write(manifestFile, JSON.stringify(manifest));
+  return { frames, files };
+}
+
+/** Two frames' raw pixels, of one size, are the same frame: no channel differs by more than SAME_FRAME. */
+export function sameFrame(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (Math.abs(a[i]! - b[i]!) > SAME_FRAME) return false;
+  return true;
+}
+
 /** Every file (relative to the footage folder) a manifest names: the manifest, its shots, extras that are files, and every clip frame. */
 export function footageFiles(manifest: Manifest): string[] {
   const files = new Set<string>(['manifest.json']);
@@ -42,13 +89,6 @@ export function footageFiles(manifest: Manifest): string[] {
   for (const extra of Object.values(manifest.extras ?? {})) if (typeof extra?.file === 'string') files.add(extra.file);
   for (const clip of Object.values(manifest.clips ?? {})) for (const frame of clip.frames) files.add(`${clip.dir}/${frame.file}`);
   return [...files];
-}
-
-/** How many clips (recorded frame sequences) the footage in `footageIn` holds. */
-export async function clipCount(footageIn: string): Promise<number> {
-  const manifestFile = path.join(footageIn, 'manifest.json');
-  if (!existsSync(manifestFile)) return 0;
-  return Object.keys((await Bun.file(manifestFile).json() as Manifest).clips ?? {}).length;
 }
 
 /** Every file under `dir` as its path relative to `dir` (with `/`), sorted. */

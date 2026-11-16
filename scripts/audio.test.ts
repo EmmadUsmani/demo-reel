@@ -3,7 +3,7 @@ import path from 'node:path';
 import type { Cue as EngineCue } from '../app/src/engine/scene';
 import {
   audioOptions, captionsFor, CEILING, clipFile, duckEnvelope, fitReport, limit, lufs, mixDown, parseLoudness, RATE, readWav, renderEffects, resample,
-  trimSpeech, voiceTrack, writeWav, type Clip, type Cue, type Line,
+  stopCuts, trimSpeech, voiceTrack, writeWav, type Clip, type Cue, type Line,
 } from './audio-lib';
 import { ffmpegTest, probeAudio, tempDir } from './test-support';
 
@@ -106,6 +106,20 @@ describe('trimSpeech', () => {
   test('works out the lead-in and tail in samples at the clip\'s own rate', () => {
     const { samples } = trimSpeech(padded(10_000, 24_000, 10_000), 24_000);
     expect(samples.length).toBe(Math.round(0.04 * 24_000) + 23_999 + Math.round(0.15 * 24_000));
+  });
+});
+
+describe('stopCuts', () => {
+  test('names each line a stop falls inside, the stop, and how much of the line it cuts', () => {
+    const clips = [clip({ at: 2, until: 5 }, 1.5), clip({ id: 'b', at: 6, until: 9 }, 2), clip({ id: 'c', at: 10, until: 12 }, 1)];
+    const cuts = stopCuts(clips, [3, 8.5, 12]);
+    expect(cuts).toHaveLength(1);
+    expect(cuts[0]).toBe('  intro/one: the stop at 3.00s cuts it 0.50s before its end: Hello there.');
+  });
+
+  test('a stop where a line starts or after it ends cuts nothing', () => {
+    expect(stopCuts([clip({ at: 2 }, 1.5)], [2, 3.5, 4])).toEqual([]);
+    expect(stopCuts([clip({ at: 2 }, 1.5)], [])).toEqual([]);
   });
 });
 

@@ -67,6 +67,19 @@ export function fitReport(clips: Clip[], voice: string, speed: number) {
   return { lines, overruns };
 }
 
+/**
+ * The lines a stop falls inside (slides mode holds there, so the voice stops mid-line), each with the stop.
+ * `stops` are the edit's, in video time (`__video.stops`).
+ */
+export function stopCuts(clips: Clip[], stops: number[]) {
+  const cuts: string[] = [];
+  for (const { line, speech } of clips) {
+    const stop = stops.find((t) => t > line.at && t < line.at + speech);
+    if (stop !== undefined) cuts.push(`  ${line.scene}/${line.id}: the stop at ${stop.toFixed(2)}s cuts it ${(line.at + speech - stop).toFixed(2)}s before its end: ${line.text}`);
+  }
+  return cuts;
+}
+
 /** captions.json: each line's on-screen text (its caption, else what is said), timed to its speech. */
 export function captionsFor(clips: Clip[]) {
   return clips.map(({ line, speech }) => ({ id: line.id, scene: line.scene, at: line.at, end: line.at + speech, text: line.caption ?? line.text }));

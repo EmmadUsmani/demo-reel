@@ -60,7 +60,10 @@ export function viewHash(view: View, slide: number): string {
   return `${base}-${slide + 1}`;
 }
 
-/** The mode and narration the player starts with: what the URL chose, else what the edit is (a deck: slides, narration off). */
-export function startOf(params: Pick<PlayerParams, 'mode' | 'narration'>, edit: { deck?: boolean }): { mode: Mode; narration: boolean } {
-  return { mode: params.mode ?? (edit.deck ? 'slides' : 'video'), narration: params.narration ?? !edit.deck };
+/**
+ * The mode and narration the player starts with: what the URL chose, else what the edit is (a deck: slides,
+ * narration off; an edit with a `mode`: that mode, narration on; anything else: video, narration on).
+ */
+export function startOf(params: Pick<PlayerParams, 'mode' | 'narration'>, edit: { deck?: boolean; mode?: Mode }): { mode: Mode; narration: boolean } {
+  return { mode: params.mode ?? edit.mode ?? (edit.deck ? 'slides' : 'video'), narration: params.narration ?? !edit.deck };
 }
